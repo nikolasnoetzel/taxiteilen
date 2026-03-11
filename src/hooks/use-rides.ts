@@ -25,10 +25,21 @@ export function useRideRequests(routeId: string | undefined, estimatedArrival: s
       if (!routeId || !estimatedArrival) return [];
 
       // Get all ride requests for this route
+      // No FK to profiles, so we fetch requests then profiles separately
       const { data, error } = await supabase
         .from("ride_requests")
-        .select("*, profile:profiles!ride_requests_user_id_fkey(full_name)")
+        .select("*")
         .eq("route_id", routeId);
+
+      if (error) throw error;
+      if (!data || data.length === 0) return [];
+
+      // Fetch profile names for all user_ids
+      const userIds = [...new Set(data.map((r) => r.user_id))];
+      const { data: profiles } = await supabase
+        .from("profiles")
+        .select("user_id, full_name")
+        .in("user_id", userIds);
 
       if (error) throw error;
 
