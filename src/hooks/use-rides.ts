@@ -41,16 +41,16 @@ export function useRideRequests(routeId: string | undefined, estimatedArrival: s
         .select("user_id, full_name")
         .in("user_id", userIds);
 
-      if (error) throw error;
+      const profileMap = new Map(
+        (profiles || []).map((p) => [p.user_id, p.full_name])
+      );
 
-      // Filter ±60 min client-side (arrival is HH:MM string)
-      const [h, m] = estimatedArrival.split(":").map(Number);
-      const targetMin = h * 60 + m;
-
-      return (data as unknown as RideRequestRow[]).filter((r) => {
-        const [rh, rm] = r.estimated_arrival.split(":").map(Number);
-        return Math.abs(rh * 60 + rm - targetMin) <= 60;
-      });
+      return (data as unknown as RideRequestRow[])
+        .map((r) => ({ ...r, profile: { full_name: profileMap.get(r.user_id) ?? null } }))
+        .filter((r) => {
+          const [rh, rm] = r.estimated_arrival.split(":").map(Number);
+          return Math.abs(rh * 60 + rm - targetMin) <= 60;
+        });
     },
   });
 }
