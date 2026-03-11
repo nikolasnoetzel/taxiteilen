@@ -1,4 +1,5 @@
 import { Car } from "lucide-react";
+import { Link } from "react-router-dom";
 
 const Footer = () => {
   return (
@@ -21,8 +22,18 @@ const Footer = () => {
           <p>TaxiTeilen erhebt eine Servicegebühr von 10% für die Vermittlung.</p>
         </div>
 
-        <div className="border-t border-secondary-foreground/10 pt-6 text-center text-xs text-secondary-foreground/30">
-          © {new Date().getFullYear()} TaxiTeilen. Alle Rechte vorbehalten.
+        <div className="border-t border-secondary-foreground/10 pt-6 flex flex-col items-center gap-3">
+          <div className="flex gap-4 text-xs">
+            <Link to="/datenschutz" className="text-secondary-foreground/50 hover:text-secondary-foreground transition-colors">
+              Datenschutz
+            </Link>
+            <Link to="/agb" className="text-secondary-foreground/50 hover:text-secondary-foreground transition-colors">
+              AGB
+            </Link>
+          </div>
+          <span className="text-xs text-secondary-foreground/30">
+            © {new Date().getFullYear()} TaxiTeilen. Alle Rechte vorbehalten.
+          </span>
         </div>
       </div>
     </footer>
