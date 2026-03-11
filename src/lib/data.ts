@@ -88,13 +88,32 @@ export const ROUTES: Route[] = [
   },
 ];
 
-// Mock flight data
-export const MOCK_FLIGHTS: { flightNumber: string; airline: string; scheduledArrival: string; status: "on-time" | "delayed" | "landed"; origin: string }[] = [
-  { flightNumber: "LH 2084", airline: "Lufthansa", scheduledArrival: "14:30", status: "on-time", origin: "München" },
-  { flightNumber: "EW 7542", airline: "Eurowings", scheduledArrival: "15:10", status: "delayed", origin: "Stuttgart" },
-  { flightNumber: "LH 2090", airline: "Lufthansa", scheduledArrival: "16:00", status: "on-time", origin: "Frankfurt" },
-  { flightNumber: "FR 4812", airline: "Ryanair", scheduledArrival: "16:45", status: "on-time", origin: "London STN" },
-  { flightNumber: "EW 7550", airline: "Eurowings", scheduledArrival: "17:20", status: "on-time", origin: "Düsseldorf" },
+// Flight data type matching Hamburg Airport API structure for easy swap later
+export type Flight = {
+  flightNumber: string;
+  airline: string;
+  scheduledArrival: string;
+  estimatedArrival: string;
+  status: "on-time" | "delayed" | "landed" | "cancelled";
+  origin: string;
+  originCode: string;
+  gate?: string;
+  terminal?: string;
+};
+
+// Realistic mock flights for Hamburg Airport (HAM)
+// Will be replaced by Hamburg Airport API: GET https://rest.api.hamburg-airport.de/v2/flights/arrivals
+export const MOCK_FLIGHTS: Flight[] = [
+  { flightNumber: "LH 2084", airline: "Lufthansa", scheduledArrival: "14:30", estimatedArrival: "14:30", status: "on-time", origin: "München", originCode: "MUC", gate: "B12", terminal: "T1" },
+  { flightNumber: "EW 7542", airline: "Eurowings", scheduledArrival: "15:10", estimatedArrival: "15:45", status: "delayed", origin: "Stuttgart", originCode: "STR", gate: "A04", terminal: "T2" },
+  { flightNumber: "LH 2090", airline: "Lufthansa", scheduledArrival: "16:00", estimatedArrival: "16:00", status: "on-time", origin: "Frankfurt", originCode: "FRA", gate: "B08", terminal: "T1" },
+  { flightNumber: "FR 4812", airline: "Ryanair", scheduledArrival: "16:45", estimatedArrival: "16:45", status: "on-time", origin: "London Stansted", originCode: "STN", gate: "C02", terminal: "T2" },
+  { flightNumber: "EW 7550", airline: "Eurowings", scheduledArrival: "17:20", estimatedArrival: "17:20", status: "on-time", origin: "Düsseldorf", originCode: "DUS", gate: "A06", terminal: "T2" },
+  { flightNumber: "LH 2092", airline: "Lufthansa", scheduledArrival: "18:05", estimatedArrival: "18:05", status: "on-time", origin: "Wien", originCode: "VIE", gate: "B14", terminal: "T1" },
+  { flightNumber: "SK 672", airline: "SAS", scheduledArrival: "18:40", estimatedArrival: "18:40", status: "on-time", origin: "Kopenhagen", originCode: "CPH", gate: "A10", terminal: "T2" },
+  { flightNumber: "EK 060", airline: "Emirates", scheduledArrival: "19:15", estimatedArrival: "19:30", status: "delayed", origin: "Dubai", originCode: "DXB", gate: "B02", terminal: "T1" },
+  { flightNumber: "EW 7558", airline: "Eurowings", scheduledArrival: "20:00", estimatedArrival: "20:00", status: "on-time", origin: "Palma de Mallorca", originCode: "PMI", gate: "C06", terminal: "T2" },
+  { flightNumber: "LH 2096", airline: "Lufthansa", scheduledArrival: "21:30", estimatedArrival: "21:30", status: "on-time", origin: "Zürich", originCode: "ZRH", gate: "B10", terminal: "T1" },
 ];
 
 // Mock ride requests

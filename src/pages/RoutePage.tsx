@@ -119,13 +119,21 @@ const RoutePage = () => {
                     {flight.flightNumber}
                   </div>
                   <div className="text-sm text-muted-foreground">
-                    {flight.airline} · aus {flight.origin}
+                    {flight.airline} · aus {flight.origin} ({flight.originCode})
                   </div>
+                  {flight.gate && (
+                    <div className="text-xs text-muted-foreground">
+                      Gate {flight.gate} · {flight.terminal}
+                    </div>
+                  )}
                 </div>
                 <div className="text-right">
                   <div className="flex items-center gap-1.5 text-sm text-card-foreground">
                     <Clock className="h-3.5 w-3.5" />
                     {flight.scheduledArrival}
+                    {flight.estimatedArrival !== flight.scheduledArrival && (
+                      <span className="text-xs text-primary">→ {flight.estimatedArrival}</span>
+                    )}
                   </div>
                   <StatusBadge status={flight.status} />
                 </div>
