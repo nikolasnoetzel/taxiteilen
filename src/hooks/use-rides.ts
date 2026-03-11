@@ -41,6 +41,9 @@ export function useRideRequests(routeId: string | undefined, estimatedArrival: s
         .select("user_id, full_name")
         .in("user_id", userIds);
 
+      const [h, m] = estimatedArrival.split(":").map(Number);
+      const targetMin = h * 60 + m;
+
       const profileMap = new Map(
         (profiles || []).map((p) => [p.user_id, p.full_name])
       );
