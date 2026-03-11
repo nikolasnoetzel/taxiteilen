@@ -104,7 +104,7 @@ const RoutePage = () => {
         <div className="mb-8">
           <h2 className="mb-4 font-display text-xl font-semibold text-foreground">
             <Plane className="mb-0.5 mr-2 inline-block h-5 w-5 text-primary" />
-            Flugnummer suchen
+            Wann kommst du an?
           </h2>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />

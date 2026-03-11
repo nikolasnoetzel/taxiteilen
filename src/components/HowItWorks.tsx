@@ -10,7 +10,7 @@ const steps = [
   {
     icon: Users,
     title: "Mitfahrer finden",
-    description: "Sieh wer noch mit dem gleichen Flug ankommt und ein Taxi in die gleiche Richtung sucht.",
+    description: "Sieh wer noch zu einer ähnlichen Uhrzeit ankommt oder zum Flughafen möchte — ±60 Minuten rund um deine Ankunft.",
   },
   {
     icon: CreditCard,
