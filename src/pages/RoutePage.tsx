@@ -1,5 +1,5 @@
-import { useParams, Link } from "react-router-dom";
-import { useState } from "react";
+import { useParams, Link, useNavigate } from "react-router-dom";
+import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -10,8 +10,12 @@ import {
   AlertCircle,
   CheckCircle,
   Search,
+  Loader2,
 } from "lucide-react";
-import { ROUTES, MOCK_FLIGHTS, MOCK_RIDE_REQUESTS, getCostPerPerson } from "@/lib/data";
+import { ROUTES, MOCK_FLIGHTS, getCostPerPerson } from "@/lib/data";
+import { useAuth } from "@/contexts/AuthContext";
+import { useRideRequests, useJoinRide } from "@/hooks/use-rides";
+import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 
@@ -33,9 +37,35 @@ const StatusBadge = ({ status }: { status: string }) => {
 
 const RoutePage = () => {
   const { routeId } = useParams();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const route = ROUTES.find((r) => r.id === routeId);
   const [flightSearch, setFlightSearch] = useState("");
   const [selectedFlight, setSelectedFlight] = useState<string | null>(null);
+
+  const selectedFlightData = selectedFlight
+    ? MOCK_FLIGHTS.find((f) => f.flightNumber === selectedFlight)
+    : null;
+
+  const { data: rideRequests = [], isLoading: loadingRequests } = useRideRequests(
+    routeId,
+    selectedFlightData?.estimatedArrival ?? null
+  );
+
+  const joinRide = useJoinRide(routeId);
+
+  // Realtime subscription for live updates
+  useEffect(() => {
+    if (!routeId) return;
+    const channel = supabase
+      .channel(`ride-requests-${routeId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ride_requests", filter: `route_id=eq.${routeId}` }, () => {
+        // React Query will refetch
+        window.dispatchEvent(new CustomEvent("ride-request-change"));
+      })
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [routeId]);
 
   if (!route) {
     return (
@@ -54,27 +84,25 @@ const RoutePage = () => {
       f.origin.toLowerCase().includes(flightSearch.toLowerCase())
   );
 
-  // Match riders within ±60 minutes of the selected flight's arrival
-  const selectedFlightData = selectedFlight
-    ? MOCK_FLIGHTS.find((f) => f.flightNumber === selectedFlight)
-    : null;
-
-  const isWithin60Min = (time1: string, time2: string): boolean => {
-    const [h1, m1] = time1.split(":").map(Number);
-    const [h2, m2] = time2.split(":").map(Number);
-    const diff = Math.abs((h1 * 60 + m1) - (h2 * 60 + m2));
-    return diff <= 60;
-  };
-
-  const matchingRequests = selectedFlightData
-    ? MOCK_RIDE_REQUESTS.filter(
-        (r) =>
-          r.routeId === routeId &&
-          isWithin60Min(r.estimatedArrival, selectedFlightData.estimatedArrival)
-      )
-    : [];
-
+  // Exclude current user from display count
+  const otherRequests = rideRequests.filter((r) => r.user_id !== user?.id);
+  const userAlreadyJoined = rideRequests.some((r) => r.user_id === user?.id);
+  const totalRiders = rideRequests.length + (userAlreadyJoined ? 0 : 1); // +1 for potential join
   const estimatedTotal = (route.estimatedPrice.min + route.estimatedPrice.max) / 2;
+
+  const handleJoin = () => {
+    if (!user) {
+      navigate("/auth");
+      return;
+    }
+    if (!selectedFlightData) return;
+    joinRide.mutate({
+      flightNumber: selectedFlightData.flightNumber,
+      scheduledArrival: selectedFlightData.scheduledArrival,
+      estimatedArrival: selectedFlightData.estimatedArrival,
+      flightStatus: selectedFlightData.status,
+    });
+  };
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -173,26 +201,32 @@ const RoutePage = () => {
               Personen die ±60 Minuten um {selectedFlightData?.estimatedArrival} Uhr ankommen
             </p>
 
-            {matchingRequests.length > 0 ? (
+            {loadingRequests ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              </div>
+            ) : otherRequests.length > 0 ? (
               <div className="space-y-3">
-                {matchingRequests.map((req) => (
+                {otherRequests.map((req) => (
                   <div
                     key={req.id}
                     className="flex items-center justify-between rounded-lg border border-border bg-card p-4"
                   >
                     <div>
-                      <div className="font-medium text-card-foreground">{req.userName}</div>
+                      <div className="font-medium text-card-foreground">
+                        {req.profile?.full_name || "Mitfahrer"}
+                      </div>
                       <div className="text-sm text-muted-foreground">
-                        Ankunft {req.estimatedArrival}
+                        Ankunft {req.estimated_arrival}
                       </div>
                     </div>
-                    <div className="text-right">
-                      {req.isInitiator && (
+                    <div className="flex items-center gap-2">
+                      {req.is_initiator && (
                         <span className="rounded-full bg-primary/10 px-2.5 py-0.5 text-xs font-medium text-primary">
                           Initiator
                         </span>
                       )}
-                      <StatusBadge status={req.flightStatus} />
+                      <StatusBadge status={req.flight_status} />
                     </div>
                   </div>
                 ))}
@@ -200,16 +234,32 @@ const RoutePage = () => {
                 {/* Cost preview */}
                 <div className="rounded-lg bg-secondary p-5 text-center">
                   <p className="mb-1 text-sm text-secondary-foreground/60">
-                    Geschätzte Kosten pro Person ({matchingRequests.length + 1} Personen, inkl. 10% Gebühr)
+                    Geschätzte Kosten pro Person ({rideRequests.length + (userAlreadyJoined ? 0 : 1)} Personen, inkl. 10% Gebühr)
                   </p>
                   <p className="font-display text-3xl font-bold text-secondary-foreground">
-                    {getCostPerPerson(estimatedTotal, matchingRequests.length + 1)} €
+                    {getCostPerPerson(estimatedTotal, rideRequests.length + (userAlreadyJoined ? 0 : 1))} €
                   </p>
                 </div>
 
-                <button className="w-full rounded-lg bg-primary py-3 font-display font-semibold text-primary-foreground shadow-[var(--shadow-gold)] transition-all hover:brightness-110">
-                  Jetzt beitreten & Taxi teilen
-                </button>
+                {!userAlreadyJoined && (
+                  <button
+                    onClick={handleJoin}
+                    disabled={joinRide.isPending}
+                    className="w-full rounded-lg bg-primary py-3 font-display font-semibold text-primary-foreground shadow-[var(--shadow-gold)] transition-all hover:brightness-110 disabled:opacity-50"
+                  >
+                    {joinRide.isPending ? (
+                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                    ) : (
+                      "Jetzt beitreten & Taxi teilen"
+                    )}
+                  </button>
+                )}
+
+                {userAlreadyJoined && (
+                  <p className="text-center text-sm font-medium text-primary">
+                    ✓ Du bist bereits eingetragen
+                  </p>
+                )}
               </div>
             ) : (
               <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
@@ -218,9 +268,19 @@ const RoutePage = () => {
                 <p className="mb-4 text-sm text-muted-foreground">
                   Sei der Erste! Trage dich ein und andere mit ähnlicher Ankunftszeit werden dich finden.
                 </p>
-                <button className="rounded-lg bg-primary px-8 py-3 font-display font-semibold text-primary-foreground shadow-[var(--shadow-gold)] transition-all hover:brightness-110">
-                  Als Erster eintragen
-                </button>
+                {!userAlreadyJoined && (
+                  <button
+                    onClick={handleJoin}
+                    disabled={joinRide.isPending}
+                    className="rounded-lg bg-primary px-8 py-3 font-display font-semibold text-primary-foreground shadow-[var(--shadow-gold)] transition-all hover:brightness-110 disabled:opacity-50"
+                  >
+                    {joinRide.isPending ? (
+                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                    ) : (
+                      "Als Erster eintragen"
+                    )}
+                  </button>
+                )}
               </div>
             )}
           </motion.div>

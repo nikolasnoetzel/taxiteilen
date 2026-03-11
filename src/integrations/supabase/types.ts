@@ -47,6 +47,80 @@ export type Database = {
         }
         Relationships: []
       }
+      ride_groups: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          route_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          route_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          route_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      ride_requests: {
+        Row: {
+          created_at: string
+          estimated_arrival: string
+          flight_number: string
+          flight_status: string
+          id: string
+          is_initiator: boolean
+          ride_group_id: string
+          route_id: string
+          scheduled_arrival: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          estimated_arrival: string
+          flight_number: string
+          flight_status?: string
+          id?: string
+          is_initiator?: boolean
+          ride_group_id: string
+          route_id: string
+          scheduled_arrival: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          estimated_arrival?: string
+          flight_number?: string
+          flight_status?: string
+          id?: string
+          is_initiator?: boolean
+          ride_group_id?: string
+          route_id?: string
+          scheduled_arrival?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ride_requests_ride_group_id_fkey"
+            columns: ["ride_group_id"]
+            isOneToOne: false
+            referencedRelation: "ride_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
