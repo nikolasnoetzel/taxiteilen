@@ -1,9 +1,12 @@
 import { useState } from "react";
 import { Link } from "react-router-dom";
-import { Car, Menu, X } from "lucide-react";
+import { Car, Menu, X, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { Button } from "@/components/ui/button";
 
 const Navbar = () => {
   const [open, setOpen] = useState(false);
+  const { user, signOut } = useAuth();
 
   return (
     <nav className="sticky top-0 z-50 border-b border-border taxi-glass">
@@ -21,6 +24,16 @@ const Navbar = () => {
           <a href="/#how-it-works" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
             So funktioniert's
           </a>
+          {user ? (
+            <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5">
+              <LogOut className="h-4 w-4" />
+              Abmelden
+            </Button>
+          ) : (
+            <Link to="/auth">
+              <Button variant="hero" size="sm">Anmelden</Button>
+            </Link>
+          )}
         </div>
 
         {/* Mobile toggle */}
@@ -38,6 +51,15 @@ const Navbar = () => {
           <a href="/#how-it-works" onClick={() => setOpen(false)} className="block py-2 text-sm font-medium text-foreground">
             So funktioniert's
           </a>
+          {user ? (
+            <button onClick={() => { signOut(); setOpen(false); }} className="block py-2 text-sm font-medium text-foreground">
+              Abmelden
+            </button>
+          ) : (
+            <Link to="/auth" onClick={() => setOpen(false)} className="block py-2 text-sm font-medium text-primary">
+              Anmelden
+            </Link>
+          )}
         </div>
       )}
     </nav>
