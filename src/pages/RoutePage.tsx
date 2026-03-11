@@ -165,10 +165,13 @@ const RoutePage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <h2 className="mb-4 font-display text-xl font-semibold text-foreground">
+            <h2 className="mb-2 font-display text-xl font-semibold text-foreground">
               <Users className="mb-0.5 mr-2 inline-block h-5 w-5 text-primary" />
-              Mitfahrer für {selectedFlight}
+              Mitfahrer in deinem Zeitfenster
             </h2>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Personen die ±60 Minuten um {selectedFlightData?.estimatedArrival} Uhr ankommen
+            </p>
 
             {matchingRequests.length > 0 ? (
               <div className="space-y-3">
