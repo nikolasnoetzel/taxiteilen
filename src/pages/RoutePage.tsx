@@ -214,9 +214,9 @@ const RoutePage = () => {
             ) : (
               <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
                 <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-                <p className="mb-1 font-medium text-card-foreground">Noch keine Mitfahrer</p>
+                <p className="mb-1 font-medium text-card-foreground">Noch keine Mitfahrer in deinem Zeitfenster</p>
                 <p className="mb-4 text-sm text-muted-foreground">
-                  Sei der Erste! Trage dich ein und andere werden dich finden.
+                  Sei der Erste! Trage dich ein und andere mit ähnlicher Ankunftszeit werden dich finden.
                 </p>
                 <button className="rounded-lg bg-primary px-8 py-3 font-display font-semibold text-primary-foreground shadow-[var(--shadow-gold)] transition-all hover:brightness-110">
                   Als Erster eintragen

@@ -84,7 +84,7 @@ const RouteSelector = () => {
             Verfügbare Strecken
           </h2>
           <p className="text-muted-foreground">
-            Wähle deine Route und finde Mitfahrer für dein Taxi.
+            Wähle deine Route und sieh wer zu einer ähnlichen Uhrzeit ankommt.
           </p>
         </div>
 
