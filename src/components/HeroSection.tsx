@@ -27,7 +27,7 @@ const HeroSection = () => {
           </h1>
 
           <p className="mx-auto mb-10 max-w-2xl text-lg text-secondary-foreground/70 md:text-xl">
-            Finde Mitreisende mit dem gleichen Flug und teile dir ein Taxi vom Flughafen — fair aufgeteilt, einfach organisiert.
+            Sieh wer zu einer ähnlichen Uhrzeit ankommt und teile dir ein Taxi vom Flughafen — fair aufgeteilt, einfach organisiert.
           </p>
 
           <div className="mx-auto flex max-w-md flex-col gap-4 sm:flex-row sm:justify-center">

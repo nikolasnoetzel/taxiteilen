@@ -54,8 +54,24 @@ const RoutePage = () => {
       f.origin.toLowerCase().includes(flightSearch.toLowerCase())
   );
 
-  const matchingRequests = selectedFlight
-    ? MOCK_RIDE_REQUESTS.filter((r) => r.flightNumber === selectedFlight && r.routeId === routeId)
+  // Match riders within ±60 minutes of the selected flight's arrival
+  const selectedFlightData = selectedFlight
+    ? MOCK_FLIGHTS.find((f) => f.flightNumber === selectedFlight)
+    : null;
+
+  const isWithin60Min = (time1: string, time2: string): boolean => {
+    const [h1, m1] = time1.split(":").map(Number);
+    const [h2, m2] = time2.split(":").map(Number);
+    const diff = Math.abs((h1 * 60 + m1) - (h2 * 60 + m2));
+    return diff <= 60;
+  };
+
+  const matchingRequests = selectedFlightData
+    ? MOCK_RIDE_REQUESTS.filter(
+        (r) =>
+          r.routeId === routeId &&
+          isWithin60Min(r.estimatedArrival, selectedFlightData.estimatedArrival)
+      )
     : [];
 
   const estimatedTotal = (route.estimatedPrice.min + route.estimatedPrice.max) / 2;
@@ -88,7 +104,7 @@ const RoutePage = () => {
         <div className="mb-8">
           <h2 className="mb-4 font-display text-xl font-semibold text-foreground">
             <Plane className="mb-0.5 mr-2 inline-block h-5 w-5 text-primary" />
-            Flugnummer suchen
+            Wann kommst du an?
           </h2>
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
@@ -149,10 +165,13 @@ const RoutePage = () => {
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
           >
-            <h2 className="mb-4 font-display text-xl font-semibold text-foreground">
+            <h2 className="mb-2 font-display text-xl font-semibold text-foreground">
               <Users className="mb-0.5 mr-2 inline-block h-5 w-5 text-primary" />
-              Mitfahrer für {selectedFlight}
+              Mitfahrer in deinem Zeitfenster
             </h2>
+            <p className="mb-4 text-sm text-muted-foreground">
+              Personen die ±60 Minuten um {selectedFlightData?.estimatedArrival} Uhr ankommen
+            </p>
 
             {matchingRequests.length > 0 ? (
               <div className="space-y-3">
@@ -195,9 +214,9 @@ const RoutePage = () => {
             ) : (
               <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
                 <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-                <p className="mb-1 font-medium text-card-foreground">Noch keine Mitfahrer</p>
+                <p className="mb-1 font-medium text-card-foreground">Noch keine Mitfahrer in deinem Zeitfenster</p>
                 <p className="mb-4 text-sm text-muted-foreground">
-                  Sei der Erste! Trage dich ein und andere werden dich finden.
+                  Sei der Erste! Trage dich ein und andere mit ähnlicher Ankunftszeit werden dich finden.
                 </p>
                 <button className="rounded-lg bg-primary px-8 py-3 font-display font-semibold text-primary-foreground shadow-[var(--shadow-gold)] transition-all hover:brightness-110">
                   Als Erster eintragen
