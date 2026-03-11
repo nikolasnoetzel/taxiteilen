@@ -54,8 +54,24 @@ const RoutePage = () => {
       f.origin.toLowerCase().includes(flightSearch.toLowerCase())
   );
 
-  const matchingRequests = selectedFlight
-    ? MOCK_RIDE_REQUESTS.filter((r) => r.flightNumber === selectedFlight && r.routeId === routeId)
+  // Match riders within ±60 minutes of the selected flight's arrival
+  const selectedFlightData = selectedFlight
+    ? MOCK_FLIGHTS.find((f) => f.flightNumber === selectedFlight)
+    : null;
+
+  const isWithin60Min = (time1: string, time2: string): boolean => {
+    const [h1, m1] = time1.split(":").map(Number);
+    const [h2, m2] = time2.split(":").map(Number);
+    const diff = Math.abs((h1 * 60 + m1) - (h2 * 60 + m2));
+    return diff <= 60;
+  };
+
+  const matchingRequests = selectedFlightData
+    ? MOCK_RIDE_REQUESTS.filter(
+        (r) =>
+          r.routeId === routeId &&
+          isWithin60Min(r.estimatedArrival, selectedFlightData.estimatedArrival)
+      )
     : [];
 
   const estimatedTotal = (route.estimatedPrice.min + route.estimatedPrice.max) / 2;
