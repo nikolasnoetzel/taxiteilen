@@ -1,0 +1,114 @@
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+
+export type RideRequestRow = {
+  id: string;
+  ride_group_id: string;
+  user_id: string;
+  route_id: string;
+  flight_number: string;
+  scheduled_arrival: string;
+  estimated_arrival: string;
+  flight_status: string;
+  is_initiator: boolean;
+  created_at: string;
+  profile?: { full_name: string | null } | null;
+};
+
+export function useRideRequests(routeId: string | undefined, estimatedArrival: string | null) {
+  return useQuery({
+    queryKey: ["ride-requests", routeId, estimatedArrival],
+    enabled: !!routeId && !!estimatedArrival,
+    queryFn: async () => {
+      if (!routeId || !estimatedArrival) return [];
+
+      // Get all ride requests for this route
+      const { data, error } = await supabase
+        .from("ride_requests")
+        .select("*, profile:profiles!ride_requests_user_id_fkey(full_name)")
+        .eq("route_id", routeId);
+
+      if (error) throw error;
+
+      // Filter ±60 min client-side (arrival is HH:MM string)
+      const [h, m] = estimatedArrival.split(":").map(Number);
+      const targetMin = h * 60 + m;
+
+      return (data as unknown as RideRequestRow[]).filter((r) => {
+        const [rh, rm] = r.estimated_arrival.split(":").map(Number);
+        return Math.abs(rh * 60 + rm - targetMin) <= 60;
+      });
+    },
+  });
+}
+
+export function useJoinRide(routeId: string | undefined) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (params: {
+      flightNumber: string;
+      scheduledArrival: string;
+      estimatedArrival: string;
+      flightStatus: string;
+    }) => {
+      if (!user || !routeId) throw new Error("Nicht eingeloggt");
+
+      // Check if user already has a request for this route
+      const { data: existing } = await supabase
+        .from("ride_requests")
+        .select("id")
+        .eq("user_id", user.id)
+        .eq("route_id", routeId)
+        .maybeSingle();
+
+      if (existing) throw new Error("Du bist bereits für diese Route eingetragen.");
+
+      // Find an open group for this route, or create one
+      let groupId: string;
+      const { data: openGroup } = await supabase
+        .from("ride_groups")
+        .select("id")
+        .eq("route_id", routeId)
+        .eq("status", "open")
+        .limit(1)
+        .maybeSingle();
+
+      if (openGroup) {
+        groupId = openGroup.id;
+      } else {
+        const { data: newGroup, error: gErr } = await supabase
+          .from("ride_groups")
+          .insert({ route_id: routeId, created_by: user.id })
+          .select("id")
+          .single();
+        if (gErr) throw gErr;
+        groupId = newGroup.id;
+      }
+
+      const { error } = await supabase.from("ride_requests").insert({
+        ride_group_id: groupId,
+        user_id: user.id,
+        route_id: routeId,
+        flight_number: params.flightNumber,
+        scheduled_arrival: params.scheduledArrival,
+        estimated_arrival: params.estimatedArrival,
+        flight_status: params.flightStatus,
+        is_initiator: !openGroup,
+      });
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ride-requests"] });
+      toast({ title: "Eingetragen!", description: "Du bist jetzt für diese Fahrt eingetragen." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Fehler", description: err.message, variant: "destructive" });
+    },
+  });
+}
