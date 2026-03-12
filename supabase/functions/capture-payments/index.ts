@@ -72,8 +72,12 @@ serve(async (req) => {
 
     for (const payment of (payments || [])) {
       try {
-        // Capture the correct amount (may be less than authorized)
-        const finalAmount = Math.min(captureAmountCents, payment.amount_authorized);
+        // Find the rider's num_persons to calculate their share
+        const rider = rideRequests.find((r: any) => r.user_id === payment.user_id);
+        const riderPersons = rider?.num_persons || 1;
+        const riderShare = perPersonCents * riderPersons;
+        const riderFee = Math.round(riderShare * 0.1);
+        const finalAmount = Math.min(riderShare + riderFee, payment.amount_authorized);
         
         const paymentIntent = await stripe.paymentIntents.capture(
           payment.stripe_payment_intent_id,
