@@ -68,9 +68,19 @@ async function fetchFromHamburgAPI(airportCode: string) {
 
     const raw = await res.json();
     const items = Array.isArray(raw) ? raw : raw.arrivals || raw.data || raw.flights || [];
-    console.log(`Hamburg API: ${items.length} raw items`);
+    
+    // Filter to today's flights only
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    
+    const todayItems = items.filter((f: any) => {
+      const t = (f.plannedArrivalTime || "").substring(0, 10);
+      return t === todayStr;
+    });
+    
+    console.log(`Hamburg API: ${items.length} total, ${todayItems.length} today`);
 
-    const mapped = items.map((f: any) => ({
+    const mapped = todayItems.map((f: any) => ({
       flightNumber: (f.flightnumber || "").trim(),
       airline: f.airlineName || "",
       scheduledArrival: formatHamburgTime(f.plannedArrivalTime || ""),
@@ -80,9 +90,10 @@ async function fetchFromHamburgAPI(airportCode: string) {
       originCode: f.originAirport3LCode || "",
       gate: null,
       terminal: f.arrivalTerminal || null,
-    })).filter((f: any) => f.flightNumber && f.scheduledArrival);
+    })).filter((f: any) => f.flightNumber && f.scheduledArrival)
+      .sort((a: any, b: any) => a.scheduledArrival.localeCompare(b.scheduledArrival));
 
-    console.log(`Hamburg API: ${mapped.length} mapped flights`);
+    console.log(`Hamburg API: ${mapped.length} mapped flights for today`);
     return mapped.length > 0 ? mapped : null;
   } catch (err) {
     console.error("Hamburg API fetch error:", err);
