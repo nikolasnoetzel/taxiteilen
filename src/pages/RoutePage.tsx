@@ -56,7 +56,7 @@ const RoutePage = () => {
   const joinRide = useJoinRide(routeId);
 
   // Realtime subscription for live updates
-  const queryClient = __import_useQueryClient();
+  const queryClient = useQueryClient();
   useEffect(() => {
     if (!routeId) return;
     const channel = supabase
