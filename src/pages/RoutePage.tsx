@@ -159,7 +159,14 @@ const RoutePage = () => {
 
           {/* Flight list */}
           <div className="mt-4 space-y-2">
-            {filteredFlights.map((flight) => (
+            {loadingFlights ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-sm text-muted-foreground">Flüge werden geladen…</span>
+              </div>
+            ) : filteredFlights.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">Keine Flüge gefunden.</p>
+            ) : filteredFlights.map((flight) => (
               <motion.button
                 key={flight.flightNumber}
                 layout
