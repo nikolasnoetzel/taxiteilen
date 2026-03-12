@@ -1,10 +1,9 @@
-import { forwardRef } from "react";
 import { Car } from "lucide-react";
 import { Link } from "react-router-dom";
 
-const Footer = forwardRef<HTMLElement>((_, ref) => {
+const Footer = () => {
   return (
-    <footer ref={ref} className="taxi-gradient-hero px-4 py-12">
+    <footer className="taxi-gradient-hero px-4 py-12">
       <div className="container mx-auto max-w-4xl">
         <div className="mb-8 flex items-center justify-center gap-2">
           <Car className="h-6 w-6 text-primary" />
