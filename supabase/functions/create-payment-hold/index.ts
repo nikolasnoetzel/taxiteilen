@@ -117,6 +117,54 @@ serve(async (req) => {
       });
     }
 
+    // Adjust existing uncaptured PaymentIntents to new per-person amount
+    // Get total riders now (including the new one)
+    const { data: allRiders } = await supabaseAdmin
+      .from("ride_requests")
+      .select("id")
+      .eq("ride_group_id", ride_group_id);
+
+    const { data: rideGroupData } = await supabaseAdmin
+      .from("ride_groups")
+      .select("route_id")
+      .eq("id", ride_group_id)
+      .single();
+
+    if (allRiders && allRiders.length > 1 && rideGroupData) {
+      // Recalculate per-person amount based on new rider count (+1 for the joining user)
+      const newTotalRiders = allRiders.length + 1;
+      const newPerPersonCents = amount_cents; // The frontend already sends the recalculated amount
+
+      // Get all existing authorized/pending payments for this group (excluding the new one)
+      const { data: existingPayments } = await supabaseAdmin
+        .from("payments")
+        .select("*")
+        .eq("ride_group_id", ride_group_id)
+        .in("status", ["authorized", "pending"])
+        .neq("user_id", user.id);
+
+      for (const payment of (existingPayments || [])) {
+        try {
+          // Update the PaymentIntent amount (only possible for uncaptured intents)
+          await stripe.paymentIntents.update(payment.stripe_payment_intent_id, {
+            amount: newPerPersonCents,
+            application_fee_amount: Math.round(newPerPersonCents * 0.1),
+          });
+
+          await supabaseAdmin
+            .from("payments")
+            .update({
+              amount_authorized: newPerPersonCents,
+              platform_fee: Math.round(newPerPersonCents * 0.1),
+            })
+            .eq("id", payment.id);
+        } catch (updateErr) {
+          console.error(`Failed to update payment ${payment.id}:`, updateErr);
+          // Non-fatal: the capture step will handle the correct amount
+        }
+      }
+    }
+
     return new Response(
       JSON.stringify({ url: session.url }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
