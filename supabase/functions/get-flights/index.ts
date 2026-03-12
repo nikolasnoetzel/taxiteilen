@@ -1,5 +1,3 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -8,9 +6,8 @@ const corsHeaders = {
 
 // In-memory cache (per isolate, refreshed every 5 min)
 let cache: { data: any[]; ts: number } | null = null;
-const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
+const CACHE_TTL_MS = 5 * 60 * 1000;
 
-// Mock flights as fallback
 const MOCK_FLIGHTS = [
   { flightNumber: "LH 2084", airline: "Lufthansa", scheduledArrival: "14:30", estimatedArrival: "14:30", status: "on-time", origin: "München", originCode: "MUC", gate: "B12", terminal: "T1" },
   { flightNumber: "EW 7542", airline: "Eurowings", scheduledArrival: "15:10", estimatedArrival: "15:45", status: "delayed", origin: "Stuttgart", originCode: "STR", gate: "A04", terminal: "T2" },
@@ -24,22 +21,34 @@ const MOCK_FLIGHTS = [
   { flightNumber: "LH 2096", airline: "Lufthansa", scheduledArrival: "21:30", estimatedArrival: "21:30", status: "on-time", origin: "Zürich", originCode: "ZRH", gate: "B10", terminal: "T1" },
 ];
 
-function mapStatus(status: string): "on-time" | "delayed" | "landed" | "cancelled" {
-  const s = (status || "").toLowerCase();
-  if (s.includes("cancel")) return "cancelled";
-  if (s.includes("land") || s.includes("arrived")) return "landed";
-  if (s.includes("delay")) return "delayed";
-  return "on-time";
-}
-
-function formatTime(dateStr: string | null): string {
+function formatHamburgTime(dateStr: string): string {
   if (!dateStr) return "";
   try {
-    const d = new Date(dateStr);
+    const cleaned = dateStr.replace(/\[.*\]$/, "");
+    const d = new Date(cleaned);
+    if (isNaN(d.getTime())) return "";
     return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
   } catch {
     return "";
   }
+}
+
+function mapHamburgStatus(f: any): string {
+  if (f.cancelled) return "cancelled";
+  const s = (f.flightStatusArrival || "").toUpperCase();
+  if (s === "CNX" || s === "CAN") return "cancelled";
+  if (s === "LND" || s === "ARR") return "landed";
+  if (s === "DEL") return "delayed";
+  if (f.expectedArrivalTime && f.plannedArrivalTime) {
+    try {
+      const planned = new Date(f.plannedArrivalTime.replace(/\[.*\]$/, ""));
+      const expected = new Date(f.expectedArrivalTime.replace(/\[.*\]$/, ""));
+      const diffMin = (expected.getTime() - planned.getTime()) / 60000;
+      // Only "delayed" if arriving MORE than 10 min late (not early)
+      if (diffMin > 10) return "delayed";
+    } catch { /* ignore */ }
+  }
+  return "on-time";
 }
 
 async function fetchFromHamburgAPI(airportCode: string) {
@@ -47,35 +56,45 @@ async function fetchFromHamburgAPI(airportCode: string) {
   if (!apiKey || airportCode !== "HAM") return null;
 
   try {
-    const res = await fetch(
-      "https://rest.api.hamburg-airport.de/v2/flights/arrivals",
-      {
-        headers: {
-          "Ocp-Apim-Subscription-Key": apiKey,
-          Accept: "application/json",
-        },
-      }
-    );
+    const res = await fetch("https://rest.api.hamburg-airport.de/v2/flights/arrivals", {
+      headers: { "Ocp-Apim-Subscription-Key": apiKey, Accept: "application/json" },
+    });
 
     if (!res.ok) {
-      console.error(`Hamburg API error: ${res.status} ${res.statusText}`);
+      const body = await res.text();
+      console.error(`Hamburg API error: ${res.status} - ${body.substring(0, 200)}`);
       return null;
     }
 
     const raw = await res.json();
-    const flights = Array.isArray(raw) ? raw : raw.arrivals || raw.data || [];
+    const items = Array.isArray(raw) ? raw : raw.arrivals || raw.data || raw.flights || [];
+    
+    // Filter to today's flights only
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    
+    const todayItems = items.filter((f: any) => {
+      const t = (f.plannedArrivalTime || "").substring(0, 10);
+      return t === todayStr;
+    });
+    
+    console.log(`Hamburg API: ${items.length} total, ${todayItems.length} today`);
 
-    return flights.map((f: any) => ({
-      flightNumber: f.flightNumber || f.flight_number || f.flnr || "",
-      airline: f.airline || f.airlineName || f.carrier || "",
-      scheduledArrival: formatTime(f.scheduledTime || f.scheduled || f.sdt),
-      estimatedArrival: formatTime(f.estimatedTime || f.estimated || f.edt || f.scheduledTime || f.scheduled || f.sdt),
-      status: mapStatus(f.status || f.flightStatus || ""),
-      origin: f.origin || f.departure || f.fromCity || "",
-      originCode: f.originCode || f.departureCode || f.fromIata || "",
-      gate: f.gate || f.gateNumber || null,
-      terminal: f.terminal || f.terminalName || null,
-    })).filter((f: any) => f.flightNumber && f.scheduledArrival);
+    const mapped = todayItems.map((f: any) => ({
+      flightNumber: (f.flightnumber || "").trim(),
+      airline: f.airlineName || "",
+      scheduledArrival: formatHamburgTime(f.plannedArrivalTime || ""),
+      estimatedArrival: formatHamburgTime(f.expectedArrivalTime || f.plannedArrivalTime || ""),
+      status: mapHamburgStatus(f),
+      origin: f.originAirportName || "",
+      originCode: f.originAirport3LCode || "",
+      gate: null,
+      terminal: f.arrivalTerminal || null,
+    })).filter((f: any) => f.flightNumber && f.scheduledArrival)
+      .sort((a: any, b: any) => a.scheduledArrival.localeCompare(b.scheduledArrival));
+
+    console.log(`Hamburg API: ${mapped.length} mapped flights for today`);
+    return mapped.length > 0 ? mapped : null;
   } catch (err) {
     console.error("Hamburg API fetch error:", err);
     return null;
@@ -91,25 +110,22 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const airportCode = (url.searchParams.get("airport") || "HAM").toUpperCase();
 
-    // Check cache
     if (cache && Date.now() - cache.ts < CACHE_TTL_MS) {
       return new Response(JSON.stringify({ flights: cache.data, source: "cache" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Try Hamburg Airport API
     const liveFlights = await fetchFromHamburgAPI(airportCode);
 
-    if (liveFlights && liveFlights.length > 0) {
+    if (liveFlights) {
       cache = { data: liveFlights, ts: Date.now() };
       return new Response(JSON.stringify({ flights: liveFlights, source: "hamburg-api" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Fallback to mock data
-    console.log("Using mock flight data as fallback");
+    console.log("Fallback to mock data");
     return new Response(JSON.stringify({ flights: MOCK_FLIGHTS, source: "mock" }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
