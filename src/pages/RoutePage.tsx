@@ -12,6 +12,7 @@ import {
   CheckCircle,
   Search,
   Loader2,
+  CreditCard,
 } from "lucide-react";
 import { ROUTES, MOCK_FLIGHTS, getCostPerPerson } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +20,8 @@ import { useRideRequests, useJoinRide } from "@/hooks/use-rides";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import PaymentButton from "@/components/PaymentButton";
+import FinalizeRide from "@/components/FinalizeRide";
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, { label: string; className: string }> = {
