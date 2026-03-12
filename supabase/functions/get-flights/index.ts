@@ -5,7 +5,7 @@ const corsHeaders = {
 };
 
 // In-memory cache (per isolate, refreshed every 5 min)
-let cache: { data: any[]; ts: number } | null = null;
+let cache: { data: any[]; ts: number; key: string } | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 const MOCK_FLIGHTS = [
@@ -68,16 +68,15 @@ async function fetchFromHamburgAPI(airportCode: string) {
 
     const raw = await res.json();
     const items = Array.isArray(raw) ? raw : raw.arrivals || raw.data || raw.flights || [];
-    
-    // Filter to today's flights only
+
     const today = new Date();
     const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
-    
+
     const todayItems = items.filter((f: any) => {
       const t = (f.plannedArrivalTime || "").substring(0, 10);
       return t === todayStr;
     });
-    
+
     console.log(`Hamburg API: ${items.length} total, ${todayItems.length} today`);
 
     const mapped = todayItems.map((f: any) => ({
@@ -101,6 +100,77 @@ async function fetchFromHamburgAPI(airportCode: string) {
   }
 }
 
+async function fetchFromAviationStack(airportCode: string) {
+  const apiKey = Deno.env.get("AVIATIONSTACK_API_KEY");
+  if (!apiKey) return null;
+
+  try {
+    // Free plan only supports HTTP
+    const url = `http://api.aviationstack.com/v1/flights?access_key=${apiKey}&arr_iata=${airportCode}&flight_status=active,scheduled,landed&limit=100`;
+    const res = await fetch(url);
+
+    if (!res.ok) {
+      const body = await res.text();
+      console.error(`AviationStack error: ${res.status} - ${body.substring(0, 200)}`);
+      return null;
+    }
+
+    const json = await res.json();
+    if (json.error) {
+      console.error(`AviationStack API error: ${JSON.stringify(json.error)}`);
+      return null;
+    }
+
+    const items = json.data || [];
+    console.log(`AviationStack: ${items.length} flights for ${airportCode}`);
+
+    const mapped = items.map((f: any) => {
+      const scheduled = f.arrival?.scheduled || "";
+      const estimated = f.arrival?.estimated || f.arrival?.scheduled || "";
+      const status = mapAviationStackStatus(f);
+
+      return {
+        flightNumber: `${f.airline?.iata || ""} ${f.flight?.number || ""}`.trim(),
+        airline: f.airline?.name || "",
+        scheduledArrival: formatISOTime(scheduled),
+        estimatedArrival: formatISOTime(estimated),
+        status,
+        origin: f.departure?.airport || "",
+        originCode: f.departure?.iata || "",
+        gate: f.arrival?.gate || null,
+        terminal: f.arrival?.terminal || null,
+      };
+    }).filter((f: any) => f.flightNumber && f.scheduledArrival)
+      .sort((a: any, b: any) => a.scheduledArrival.localeCompare(b.scheduledArrival));
+
+    console.log(`AviationStack: ${mapped.length} mapped flights`);
+    return mapped.length > 0 ? mapped : null;
+  } catch (err) {
+    console.error("AviationStack fetch error:", err);
+    return null;
+  }
+}
+
+function formatISOTime(isoStr: string): string {
+  if (!isoStr) return "";
+  try {
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return "";
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  } catch {
+    return "";
+  }
+}
+
+function mapAviationStackStatus(f: any): string {
+  const s = (f.flight_status || "").toLowerCase();
+  if (s === "cancelled") return "cancelled";
+  if (s === "landed") return "landed";
+  if (s === "diverted") return "cancelled";
+  if (f.arrival?.delay && f.arrival.delay > 10) return "delayed";
+  return "on-time";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -110,17 +180,26 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const airportCode = (url.searchParams.get("airport") || "HAM").toUpperCase();
 
-    if (cache && Date.now() - cache.ts < CACHE_TTL_MS) {
+    // Cache is keyed per airport
+    const cacheKey = airportCode;
+    if (cache && cache.key === cacheKey && Date.now() - cache.ts < CACHE_TTL_MS) {
       return new Response(JSON.stringify({ flights: cache.data, source: "cache" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const liveFlights = await fetchFromHamburgAPI(airportCode);
+    // Provider chain: Hamburg API (for HAM) → AviationStack (any airport) → Mock
+    let flights = await fetchFromHamburgAPI(airportCode);
+    let source = "hamburg-api";
 
-    if (liveFlights) {
-      cache = { data: liveFlights, ts: Date.now() };
-      return new Response(JSON.stringify({ flights: liveFlights, source: "hamburg-api" }), {
+    if (!flights) {
+      flights = await fetchFromAviationStack(airportCode);
+      source = "aviationstack";
+    }
+
+    if (flights) {
+      cache = { data: flights, ts: Date.now(), key: cacheKey };
+      return new Response(JSON.stringify({ flights, source }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
