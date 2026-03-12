@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index.tsx";
 import RoutePage from "./pages/RoutePage.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
+import Impressum from "./pages/Impressum.tsx";
 import AGB from "./pages/AGB.tsx";
 import Auth from "./pages/Auth.tsx";
 import StripeOnboarding from "./pages/StripeOnboarding.tsx";
@@ -28,6 +29,7 @@ const App = () => (
             <Route path="/route/:routeId" element={<RoutePage />} />
             <Route path="/datenschutz" element={<Datenschutz />} />
             <Route path="/agb" element={<AGB />} />
+            <Route path="/impressum" element={<Impressum />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/stripe-onboarding" element={<StripeOnboarding />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />

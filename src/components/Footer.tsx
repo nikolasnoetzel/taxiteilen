@@ -27,9 +27,12 @@ const Footer = () => {
             <Link to="/datenschutz" className="text-secondary-foreground/50 hover:text-secondary-foreground transition-colors">
               Datenschutz
             </Link>
-            <Link to="/agb" className="text-secondary-foreground/50 hover:text-secondary-foreground transition-colors">
-              AGB
-            </Link>
+             <Link to="/agb" className="text-secondary-foreground/50 hover:text-secondary-foreground transition-colors">
+               AGB
+             </Link>
+             <Link to="/impressum" className="text-secondary-foreground/50 hover:text-secondary-foreground transition-colors">
+               Impressum
+             </Link>
           </div>
           <span className="text-xs text-secondary-foreground/30">
             © {new Date().getFullYear()} TaxiTeilen. Alle Rechte vorbehalten.
