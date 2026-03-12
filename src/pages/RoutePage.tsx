@@ -249,23 +249,40 @@ const RoutePage = () => {
                 </div>
 
                 {!userAlreadyJoined && (
-                  <button
-                    onClick={handleJoin}
-                    disabled={joinRide.isPending}
-                    className="w-full rounded-lg bg-primary py-3 font-display font-semibold text-primary-foreground shadow-[var(--shadow-gold)] transition-all hover:brightness-110 disabled:opacity-50"
-                  >
-                    {joinRide.isPending ? (
-                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                    ) : (
-                      "Jetzt beitreten & Taxi teilen"
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleJoin}
+                      disabled={joinRide.isPending}
+                      className="w-full rounded-lg bg-primary py-3 font-display font-semibold text-primary-foreground shadow-[var(--shadow-gold)] transition-all hover:brightness-110 disabled:opacity-50"
+                    >
+                      {joinRide.isPending ? (
+                        <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                      ) : (
+                        "Jetzt beitreten & Taxi teilen"
+                      )}
+                    </button>
+                    {rideGroupId && (
+                      <PaymentButton
+                        rideGroupId={rideGroupId}
+                        estimatedAmountCents={estimatedPerPersonCents}
+                        disabled={joinRide.isPending}
+                      />
                     )}
-                  </button>
+                  </div>
                 )}
 
                 {userAlreadyJoined && (
                   <p className="text-center text-sm font-medium text-primary">
                     ✓ Du bist bereits eingetragen
                   </p>
+                )}
+
+                {/* Initiator can finalize the ride */}
+                {userIsInitiator && rideGroupId && (
+                  <FinalizeRide
+                    rideGroupId={rideGroupId}
+                    numRiders={rideRequests.length}
+                  />
                 )}
               </div>
             ) : (
