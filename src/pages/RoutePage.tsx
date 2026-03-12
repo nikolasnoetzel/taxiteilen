@@ -14,9 +14,10 @@ import {
   Loader2,
   CreditCard,
 } from "lucide-react";
-import { ROUTES, MOCK_FLIGHTS, getCostPerPerson } from "@/lib/data";
+import { ROUTES, getCostPerPerson } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRideRequests, useJoinRide } from "@/hooks/use-rides";
+import { useFlights } from "@/hooks/use-flights";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
