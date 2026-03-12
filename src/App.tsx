@@ -9,6 +9,8 @@ import RoutePage from "./pages/RoutePage.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
 import AGB from "./pages/AGB.tsx";
 import Auth from "./pages/Auth.tsx";
+import StripeOnboarding from "./pages/StripeOnboarding.tsx";
+import PaymentSuccess from "./pages/PaymentSuccess.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -26,6 +28,8 @@ const App = () => (
             <Route path="/datenschutz" element={<Datenschutz />} />
             <Route path="/agb" element={<AGB />} />
             <Route path="/auth" element={<Auth />} />
+            <Route path="/stripe-onboarding" element={<StripeOnboarding />} />
+            <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>

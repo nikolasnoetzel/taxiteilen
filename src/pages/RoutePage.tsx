@@ -12,6 +12,7 @@ import {
   CheckCircle,
   Search,
   Loader2,
+  CreditCard,
 } from "lucide-react";
 import { ROUTES, MOCK_FLIGHTS, getCostPerPerson } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
@@ -19,6 +20,8 @@ import { useRideRequests, useJoinRide } from "@/hooks/use-rides";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import PaymentButton from "@/components/PaymentButton";
+import FinalizeRide from "@/components/FinalizeRide";
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, { label: string; className: string }> = {
@@ -88,8 +91,11 @@ const RoutePage = () => {
   // Exclude current user from display count
   const otherRequests = rideRequests.filter((r) => r.user_id !== user?.id);
   const userAlreadyJoined = rideRequests.some((r) => r.user_id === user?.id);
+  const userIsInitiator = rideRequests.some((r) => r.user_id === user?.id && r.is_initiator);
   const totalRiders = rideRequests.length + (userAlreadyJoined ? 0 : 1); // +1 for potential join
   const estimatedTotal = (route.estimatedPrice.min + route.estimatedPrice.max) / 2;
+  const rideGroupId = rideRequests.length > 0 ? rideRequests[0].ride_group_id : null;
+  const estimatedPerPersonCents = Math.round(getCostPerPerson(estimatedTotal, totalRiders) * 100);
 
   const handleJoin = () => {
     if (!user) {
@@ -243,23 +249,40 @@ const RoutePage = () => {
                 </div>
 
                 {!userAlreadyJoined && (
-                  <button
-                    onClick={handleJoin}
-                    disabled={joinRide.isPending}
-                    className="w-full rounded-lg bg-primary py-3 font-display font-semibold text-primary-foreground shadow-[var(--shadow-gold)] transition-all hover:brightness-110 disabled:opacity-50"
-                  >
-                    {joinRide.isPending ? (
-                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                    ) : (
-                      "Jetzt beitreten & Taxi teilen"
+                  <div className="space-y-3">
+                    <button
+                      onClick={handleJoin}
+                      disabled={joinRide.isPending}
+                      className="w-full rounded-lg bg-primary py-3 font-display font-semibold text-primary-foreground shadow-[var(--shadow-gold)] transition-all hover:brightness-110 disabled:opacity-50"
+                    >
+                      {joinRide.isPending ? (
+                        <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                      ) : (
+                        "Jetzt beitreten & Taxi teilen"
+                      )}
+                    </button>
+                    {rideGroupId && (
+                      <PaymentButton
+                        rideGroupId={rideGroupId}
+                        estimatedAmountCents={estimatedPerPersonCents}
+                        disabled={joinRide.isPending}
+                      />
                     )}
-                  </button>
+                  </div>
                 )}
 
                 {userAlreadyJoined && (
                   <p className="text-center text-sm font-medium text-primary">
                     ✓ Du bist bereits eingetragen
                   </p>
+                )}
+
+                {/* Initiator can finalize the ride */}
+                {userIsInitiator && rideGroupId && (
+                  <FinalizeRide
+                    rideGroupId={rideGroupId}
+                    numRiders={rideRequests.length}
+                  />
                 )}
               </div>
             ) : (

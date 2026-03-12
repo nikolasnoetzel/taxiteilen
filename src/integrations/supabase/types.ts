@@ -14,6 +14,56 @@ export type Database = {
   }
   public: {
     Tables: {
+      payments: {
+        Row: {
+          amount_authorized: number
+          amount_captured: number | null
+          created_at: string
+          currency: string
+          id: string
+          platform_fee: number | null
+          ride_group_id: string
+          status: string
+          stripe_payment_intent_id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          amount_authorized: number
+          amount_captured?: number | null
+          created_at?: string
+          currency?: string
+          id?: string
+          platform_fee?: number | null
+          ride_group_id: string
+          status?: string
+          stripe_payment_intent_id: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          amount_authorized?: number
+          amount_captured?: number | null
+          created_at?: string
+          currency?: string
+          id?: string
+          platform_fee?: number | null
+          ride_group_id?: string
+          status?: string
+          stripe_payment_intent_id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payments_ride_group_id_fkey"
+            columns: ["ride_group_id"]
+            isOneToOne: false
+            referencedRelation: "ride_groups"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       profiles: {
         Row: {
           created_at: string
@@ -21,6 +71,9 @@ export type Database = {
           full_name: string | null
           id: string
           phone: string | null
+          stripe_connect_account_id: string | null
+          stripe_connect_onboarding_complete: boolean
+          stripe_customer_id: string | null
           terms_accepted_at: string | null
           updated_at: string
           user_id: string
@@ -31,6 +84,9 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          stripe_connect_account_id?: string | null
+          stripe_connect_onboarding_complete?: boolean
+          stripe_customer_id?: string | null
           terms_accepted_at?: string | null
           updated_at?: string
           user_id: string
@@ -41,6 +97,9 @@ export type Database = {
           full_name?: string | null
           id?: string
           phone?: string | null
+          stripe_connect_account_id?: string | null
+          stripe_connect_onboarding_complete?: boolean
+          stripe_customer_id?: string | null
           terms_accepted_at?: string | null
           updated_at?: string
           user_id?: string
@@ -51,7 +110,9 @@ export type Database = {
         Row: {
           created_at: string
           created_by: string
+          final_price: number | null
           id: string
+          ride_date: string | null
           route_id: string
           status: string
           updated_at: string
@@ -59,7 +120,9 @@ export type Database = {
         Insert: {
           created_at?: string
           created_by: string
+          final_price?: number | null
           id?: string
+          ride_date?: string | null
           route_id: string
           status?: string
           updated_at?: string
@@ -67,7 +130,9 @@ export type Database = {
         Update: {
           created_at?: string
           created_by?: string
+          final_price?: number | null
           id?: string
+          ride_date?: string | null
           route_id?: string
           status?: string
           updated_at?: string
