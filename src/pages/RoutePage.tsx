@@ -55,17 +55,17 @@ const RoutePage = () => {
   const joinRide = useJoinRide(routeId);
 
   // Realtime subscription for live updates
+  const queryClient = __import_useQueryClient();
   useEffect(() => {
     if (!routeId) return;
     const channel = supabase
       .channel(`ride-requests-${routeId}`)
       .on("postgres_changes", { event: "*", schema: "public", table: "ride_requests", filter: `route_id=eq.${routeId}` }, () => {
-        // React Query will refetch
-        window.dispatchEvent(new CustomEvent("ride-request-change"));
+        queryClient.invalidateQueries({ queryKey: ["ride-requests"] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [routeId]);
+  }, [routeId, queryClient]);
 
   if (!route) {
     return (
