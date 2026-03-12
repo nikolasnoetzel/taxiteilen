@@ -252,6 +252,35 @@ const RoutePage = () => {
 
                 {!userAlreadyJoined && (
                   <div className="space-y-3">
+                    {/* Personenanzahl */}
+                    <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+                      <span className="text-sm font-medium text-card-foreground">
+                        <Users className="mb-0.5 mr-1.5 inline-block h-4 w-4 text-primary" />
+                        Für wie viele Personen?
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setNumPersons(Math.max(1, numPersons - 1))}
+                          className="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-card-foreground transition-colors hover:bg-muted"
+                        >
+                          −
+                        </button>
+                        <span className="w-6 text-center font-display font-semibold text-card-foreground">{numPersons}</span>
+                        <button
+                          type="button"
+                          onClick={() => setNumPersons(Math.min(4, numPersons + 1))}
+                          className="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-card-foreground transition-colors hover:bg-muted"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    {numPersons > 1 && (
+                      <p className="text-center text-xs text-muted-foreground">
+                        Du zahlst für {numPersons} Personen: ca. {getCostPerPerson(estimatedTotal, totalPersons) * numPersons} €
+                      </p>
+                    )}
                     <button
                       onClick={handleJoin}
                       disabled={joinRide.isPending}
@@ -260,7 +289,7 @@ const RoutePage = () => {
                       {joinRide.isPending ? (
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       ) : (
-                        "Jetzt beitreten & Taxi teilen"
+                        `Jetzt beitreten & Taxi teilen${numPersons > 1 ? ` (${numPersons} Pers.)` : ""}`
                       )}
                     </button>
                     {rideGroupId && (
