@@ -5,7 +5,7 @@ const corsHeaders = {
 };
 
 // In-memory cache (per isolate, refreshed every 5 min)
-let cache: { data: any[]; ts: number } | null = null;
+let cache: { data: any[]; ts: number; key: string } | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000;
 
 const MOCK_FLIGHTS = [
