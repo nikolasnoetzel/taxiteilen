@@ -53,12 +53,12 @@ export const ROUTES: Route[] = [
     taxiCompanies: [
       {
         name: "Vineta Taxi",
-        phone: "+49431770070",
+        phone: "+4943177070",
         description: "Zuverlässiger Taxiservice in Kiel mit Flughafentransfer-Erfahrung.",
       },
       {
         name: "Mare Taxi Kiel",
-        phone: "+49431770070",
+        phone: "+4943177070",
         description: "Komfortabler Taxi-Service für Langstrecken ab Kiel.",
       },
     ],
