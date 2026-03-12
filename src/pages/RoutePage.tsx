@@ -96,7 +96,7 @@ const RoutePage = () => {
   const totalPersons = rideRequests.reduce((sum, r) => sum + (r.num_persons || 1), 0) + (userAlreadyJoined ? 0 : numPersons);
   const estimatedTotal = (route.estimatedPrice.min + route.estimatedPrice.max) / 2;
   const rideGroupId = rideRequests.length > 0 ? rideRequests[0].ride_group_id : null;
-  const estimatedPerPersonCents = Math.round(getCostPerPerson(estimatedTotal, totalRiders) * 100);
+  const estimatedPerPersonCents = Math.round(getCostPerPerson(estimatedTotal, totalPersons) * numPersons * 100);
 
   const handleJoin = () => {
     if (!user) {
