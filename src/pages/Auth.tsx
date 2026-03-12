@@ -151,7 +151,31 @@ const Auth = () => {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="password">Passwort</Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password">Passwort</Label>
+                  {isLogin && (
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        if (!email) {
+                          toast.error("Bitte gib zuerst deine E-Mail-Adresse ein.");
+                          return;
+                        }
+                        const { error } = await supabase.auth.resetPasswordForEmail(email, {
+                          redirectTo: `${window.location.origin}/reset-password`,
+                        });
+                        if (error) {
+                          toast.error(error.message);
+                        } else {
+                          toast.success("Passwort-Reset-Link gesendet! Prüfe deine E-Mails.");
+                        }
+                      }}
+                      className="text-xs text-primary underline hover:text-primary/80"
+                    >
+                      Passwort vergessen?
+                    </button>
+                  )}
+                </div>
                 <Input
                   id="password"
                   type="password"
