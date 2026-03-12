@@ -1,8 +1,8 @@
-import { useState, forwardRef } from "react";
+import { useState } from "react";
 import { motion } from "framer-motion";
 import { Users, Euro, Percent } from "lucide-react";
 
-const CostCalculator = forwardRef<HTMLElement>((_, ref) => {
+const CostCalculator = () => {
   const [totalCost, setTotalCost] = useState(125);
   const [numPeople, setNumPeople] = useState(2);
 
@@ -11,7 +11,7 @@ const CostCalculator = forwardRef<HTMLElement>((_, ref) => {
   const perPerson = Math.ceil(totalWithFee / numPeople);
 
   return (
-    <section ref={ref} className="bg-background px-4 py-20">
+    <section className="bg-background px-4 py-20">
       <div className="container mx-auto max-w-2xl">
         <div className="mb-10 text-center">
           <h2 className="mb-3 font-display text-3xl font-bold text-foreground md:text-4xl">
@@ -89,8 +89,6 @@ const CostCalculator = forwardRef<HTMLElement>((_, ref) => {
       </div>
     </section>
   );
-});
-
-CostCalculator.displayName = "CostCalculator";
+};
 
 export default CostCalculator;
