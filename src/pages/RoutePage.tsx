@@ -227,6 +227,7 @@ const RoutePage = () => {
                       </div>
                       <div className="text-sm text-muted-foreground">
                         Ankunft {req.estimated_arrival}
+                        {(req.num_persons || 1) > 1 && ` · ${req.num_persons} Personen`}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
