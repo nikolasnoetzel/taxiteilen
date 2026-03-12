@@ -89,6 +89,8 @@ const CostCalculator = forwardRef<HTMLElement>((_, ref) => {
       </div>
     </section>
   );
-};
+});
+
+CostCalculator.displayName = "CostCalculator";
 
 export default CostCalculator;
