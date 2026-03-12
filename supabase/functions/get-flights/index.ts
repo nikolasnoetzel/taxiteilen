@@ -180,17 +180,26 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     const airportCode = (url.searchParams.get("airport") || "HAM").toUpperCase();
 
-    if (cache && Date.now() - cache.ts < CACHE_TTL_MS) {
+    // Cache is keyed per airport
+    const cacheKey = airportCode;
+    if (cache && cache.key === cacheKey && Date.now() - cache.ts < CACHE_TTL_MS) {
       return new Response(JSON.stringify({ flights: cache.data, source: "cache" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    const liveFlights = await fetchFromHamburgAPI(airportCode);
+    // Provider chain: Hamburg API (for HAM) → AviationStack (any airport) → Mock
+    let flights = await fetchFromHamburgAPI(airportCode);
+    let source = "hamburg-api";
 
-    if (liveFlights) {
-      cache = { data: liveFlights, ts: Date.now() };
-      return new Response(JSON.stringify({ flights: liveFlights, source: "hamburg-api" }), {
+    if (!flights) {
+      flights = await fetchFromAviationStack(airportCode);
+      source = "aviationstack";
+    }
+
+    if (flights) {
+      cache = { data: flights, ts: Date.now(), key: cacheKey };
+      return new Response(JSON.stringify({ flights, source }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
