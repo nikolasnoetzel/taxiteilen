@@ -90,7 +90,7 @@ serve(async (req) => {
           .from("payments")
           .update({
             amount_captured: finalAmount,
-            platform_fee: platformFeeCents,
+            platform_fee: riderFee,
             status: "captured",
           })
           .eq("id", payment.id);
