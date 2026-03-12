@@ -203,7 +203,6 @@ const RoutePage = () => {
               </motion.button>
             ))}
           </div>
-          </div>
         </div>
 
         {/* Matching riders */}
