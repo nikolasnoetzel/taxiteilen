@@ -243,10 +243,10 @@ const RoutePage = () => {
                 {/* Cost preview */}
                 <div className="rounded-lg bg-secondary p-5 text-center">
                   <p className="mb-1 text-sm text-secondary-foreground/60">
-                    Geschätzte Kosten pro Person ({rideRequests.length + (userAlreadyJoined ? 0 : 1)} Personen, inkl. 10% Gebühr)
+                    Geschätzte Kosten pro Person ({totalPersons} Personen, inkl. 10% Gebühr)
                   </p>
                   <p className="font-display text-3xl font-bold text-secondary-foreground">
-                    {getCostPerPerson(estimatedTotal, rideRequests.length + (userAlreadyJoined ? 0 : 1))} €
+                    {getCostPerPerson(estimatedTotal, totalPersons)} €
                   </p>
                 </div>
 
