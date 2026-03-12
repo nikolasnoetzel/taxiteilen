@@ -114,7 +114,8 @@ export function useJoinRide(routeId: string | undefined) {
         estimated_arrival: params.estimatedArrival,
         flight_status: params.flightStatus,
         is_initiator: !openGroup,
-      });
+        num_persons: params.numPersons || 1,
+      } as any);
 
       if (error) throw error;
     },
