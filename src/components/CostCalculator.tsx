@@ -89,8 +89,6 @@ const CostCalculator = () => {
       </div>
     </section>
   );
-});
-
-CostCalculator.displayName = "CostCalculator";
+};
 
 export default CostCalculator;
