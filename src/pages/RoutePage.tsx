@@ -49,8 +49,10 @@ const RoutePage = () => {
   const [selectedFlight, setSelectedFlight] = useState<string | null>(null);
   const [numPersons, setNumPersons] = useState(1);
 
+  const { data: flights = [], isLoading: loadingFlights } = useFlights(route?.airportCode);
+
   const selectedFlightData = selectedFlight
-    ? MOCK_FLIGHTS.find((f) => f.flightNumber === selectedFlight)
+    ? flights.find((f) => f.flightNumber === selectedFlight)
     : null;
 
   const { data: rideRequests = [], isLoading: loadingRequests } = useRideRequests(
