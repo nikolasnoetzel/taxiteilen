@@ -69,6 +69,7 @@ export function useJoinRide(routeId: string | undefined) {
       scheduledArrival: string;
       estimatedArrival: string;
       flightStatus: string;
+      numPersons?: number;
     }) => {
       if (!user || !routeId) throw new Error("Nicht eingeloggt");
 
