@@ -24,15 +24,35 @@ const MOCK_FLIGHTS = [
   { flightNumber: "LH 2096", airline: "Lufthansa", scheduledArrival: "21:30", estimatedArrival: "21:30", status: "on-time", origin: "Zürich", originCode: "ZRH", gate: "B10", terminal: "T1" },
 ];
 
-function mapStatus(status: string): "on-time" | "delayed" | "landed" | "cancelled" {
-  const s = (status || "").toLowerCase();
-  if (s.includes("cancel")) return "cancelled";
-  if (s.includes("land") || s.includes("arrived")) return "landed";
-  if (s.includes("delay")) return "delayed";
+function mapHamburgStatus(f: any): "on-time" | "delayed" | "landed" | "cancelled" {
+  if (f.cancelled) return "cancelled";
+  const s = (f.flightStatusArrival || "").toUpperCase();
+  // HAM statuses: ONB (on board/en route), LND (landed), DEL (delayed), CNX (cancelled), etc.
+  if (s === "CNX" || s === "CAN") return "cancelled";
+  if (s === "LND" || s === "ARR") return "landed";
+  if (s === "DEL") return "delayed";
+  // Check if estimated differs significantly from planned
+  if (f.expectedArrivalTime && f.plannedArrivalTime) {
+    try {
+      const planned = new Date(f.plannedArrivalTime.replace(/\[.*\]$/, ""));
+      const expected = new Date(f.expectedArrivalTime.replace(/\[.*\]$/, ""));
+      if (Math.abs(expected.getTime() - planned.getTime()) > 10 * 60 * 1000) return "delayed";
+    } catch {}
+  }
   return "on-time";
 }
 
-function formatTime(dateStr: string | null): string {
+function formatHamburgTime(dateStr: string | null): string {
+  if (!dateStr) return "";
+  try {
+    // Remove timezone ID like [Europe/Berlin]
+    const cleaned = dateStr.replace(/\[.*\]$/, "");
+    const d = new Date(cleaned);
+    return `${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`;
+  } catch {
+    return "";
+  }
+}
   if (!dateStr) return "";
   try {
     const d = new Date(dateStr);
