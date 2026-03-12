@@ -9,6 +9,8 @@ import RoutePage from "./pages/RoutePage.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
 import AGB from "./pages/AGB.tsx";
 import Auth from "./pages/Auth.tsx";
+import StripeOnboarding from "./pages/StripeOnboarding.tsx";
+import PaymentSuccess from "./pages/PaymentSuccess.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
