@@ -91,8 +91,11 @@ const RoutePage = () => {
   // Exclude current user from display count
   const otherRequests = rideRequests.filter((r) => r.user_id !== user?.id);
   const userAlreadyJoined = rideRequests.some((r) => r.user_id === user?.id);
+  const userIsInitiator = rideRequests.some((r) => r.user_id === user?.id && r.is_initiator);
   const totalRiders = rideRequests.length + (userAlreadyJoined ? 0 : 1); // +1 for potential join
   const estimatedTotal = (route.estimatedPrice.min + route.estimatedPrice.max) / 2;
+  const rideGroupId = rideRequests.length > 0 ? rideRequests[0].ride_group_id : null;
+  const estimatedPerPersonCents = Math.round(getCostPerPerson(estimatedTotal, totalRiders) * 100);
 
   const handleJoin = () => {
     if (!user) {
