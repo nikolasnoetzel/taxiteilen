@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index.tsx";
 import RoutePage from "./pages/RoutePage.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
+import Impressum from "./pages/Impressum.tsx";
 import AGB from "./pages/AGB.tsx";
 import Auth from "./pages/Auth.tsx";
 import StripeOnboarding from "./pages/StripeOnboarding.tsx";
