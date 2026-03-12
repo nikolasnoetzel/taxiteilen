@@ -43,7 +43,9 @@ function mapHamburgStatus(f: any): string {
     try {
       const planned = new Date(f.plannedArrivalTime.replace(/\[.*\]$/, ""));
       const expected = new Date(f.expectedArrivalTime.replace(/\[.*\]$/, ""));
-      if (Math.abs(expected.getTime() - planned.getTime()) > 10 * 60 * 1000) return "delayed";
+      const diffMin = (expected.getTime() - planned.getTime()) / 60000;
+      // Only "delayed" if arriving MORE than 10 min late (not early)
+      if (diffMin > 10) return "delayed";
     } catch { /* ignore */ }
   }
   return "on-time";
