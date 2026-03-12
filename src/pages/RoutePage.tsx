@@ -312,7 +312,7 @@ const RoutePage = () => {
                 {userIsInitiator && rideGroupId && (
                   <FinalizeRide
                     rideGroupId={rideGroupId}
-                    numRiders={rideRequests.length}
+                    numRiders={rideRequests.reduce((sum, r) => sum + (r.num_persons || 1), 0)}
                   />
                 )}
               </div>

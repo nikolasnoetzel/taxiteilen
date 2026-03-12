@@ -13,6 +13,7 @@ export type RideRequestRow = {
   estimated_arrival: string;
   flight_status: string;
   is_initiator: boolean;
+  num_persons: number;
   created_at: string;
   profile?: { full_name: string | null } | null;
 };
