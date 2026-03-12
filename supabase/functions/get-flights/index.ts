@@ -47,35 +47,49 @@ async function fetchFromHamburgAPI(airportCode: string) {
   if (!apiKey || airportCode !== "HAM") return null;
 
   try {
-    const res = await fetch(
-      "https://rest.api.hamburg-airport.de/v2/flights/arrivals",
-      {
-        headers: {
-          "Ocp-Apim-Subscription-Key": apiKey,
-          Accept: "application/json",
-        },
-      }
-    );
+    const apiUrl = "https://rest.api.hamburg-airport.de/v2/flights/arrivals";
+    console.log(`Fetching Hamburg API: ${apiUrl} with key: ${apiKey.substring(0, 6)}...`);
+    
+    const res = await fetch(apiUrl, {
+      headers: {
+        "Ocp-Apim-Subscription-Key": apiKey,
+        Accept: "application/json",
+      },
+    });
 
+    console.log(`Hamburg API response status: ${res.status}`);
+    
     if (!res.ok) {
-      console.error(`Hamburg API error: ${res.status} ${res.statusText}`);
+      const body = await res.text();
+      console.error(`Hamburg API error: ${res.status} ${res.statusText} - ${body}`);
       return null;
     }
 
     const raw = await res.json();
-    const flights = Array.isArray(raw) ? raw : raw.arrivals || raw.data || [];
+    console.log(`Hamburg API raw response type: ${typeof raw}, isArray: ${Array.isArray(raw)}, keys: ${typeof raw === 'object' ? Object.keys(raw).join(',') : 'n/a'}`);
+    
+    // Log first item to understand structure
+    const items = Array.isArray(raw) ? raw : raw.arrivals || raw.data || raw.flights || [];
+    console.log(`Hamburg API items count: ${items.length}`);
+    if (items.length > 0) {
+      console.log(`First item keys: ${Object.keys(items[0]).join(',')}`);
+      console.log(`First item sample: ${JSON.stringify(items[0]).substring(0, 500)}`);
+    }
 
-    return flights.map((f: any) => ({
-      flightNumber: f.flightNumber || f.flight_number || f.flnr || "",
-      airline: f.airline || f.airlineName || f.carrier || "",
-      scheduledArrival: formatTime(f.scheduledTime || f.scheduled || f.sdt),
-      estimatedArrival: formatTime(f.estimatedTime || f.estimated || f.edt || f.scheduledTime || f.scheduled || f.sdt),
-      status: mapStatus(f.status || f.flightStatus || ""),
-      origin: f.origin || f.departure || f.fromCity || "",
-      originCode: f.originCode || f.departureCode || f.fromIata || "",
-      gate: f.gate || f.gateNumber || null,
-      terminal: f.terminal || f.terminalName || null,
+    const mapped = items.map((f: any) => ({
+      flightNumber: f.flightNumber || f.flight_number || f.flnr || f.FlightNumber || f.flightNo || "",
+      airline: f.airline || f.airlineName || f.carrier || f.Airline || "",
+      scheduledArrival: formatTime(f.scheduledTime || f.scheduled || f.sdt || f.ScheduledTime || f.scheduledDateTime || ""),
+      estimatedArrival: formatTime(f.estimatedTime || f.estimated || f.edt || f.EstimatedTime || f.expectedDateTime || f.scheduledTime || f.scheduled || f.sdt || f.ScheduledTime || ""),
+      status: mapStatus(f.status || f.flightStatus || f.Status || f.FlightStatus || ""),
+      origin: f.origin || f.departure || f.fromCity || f.Origin || f.DepartureCity || "",
+      originCode: f.originCode || f.departureCode || f.fromIata || f.OriginCode || f.DepartureAirportCode || "",
+      gate: f.gate || f.gateNumber || f.Gate || null,
+      terminal: f.terminal || f.terminalName || f.Terminal || null,
     })).filter((f: any) => f.flightNumber && f.scheduledArrival);
+
+    console.log(`Mapped flights count: ${mapped.length}`);
+    return mapped;
   } catch (err) {
     console.error("Hamburg API fetch error:", err);
     return null;
