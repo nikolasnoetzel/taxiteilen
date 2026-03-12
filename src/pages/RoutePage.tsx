@@ -86,7 +86,7 @@ const RoutePage = () => {
     );
   }
 
-  const filteredFlights = MOCK_FLIGHTS.filter(
+  const filteredFlights = flights.filter(
     (f) =>
       f.flightNumber.toLowerCase().includes(flightSearch.toLowerCase()) ||
       f.origin.toLowerCase().includes(flightSearch.toLowerCase())
