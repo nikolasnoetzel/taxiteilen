@@ -11,7 +11,7 @@ const CostCalculator = forwardRef<HTMLElement>((_, ref) => {
   const perPerson = Math.ceil(totalWithFee / numPeople);
 
   return (
-    <section className="bg-background px-4 py-20">
+    <section ref={ref} className="bg-background px-4 py-20">
       <div className="container mx-auto max-w-2xl">
         <div className="mb-10 text-center">
           <h2 className="mb-3 font-display text-3xl font-bold text-foreground md:text-4xl">
