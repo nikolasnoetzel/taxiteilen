@@ -46,6 +46,7 @@ const RoutePage = () => {
   const route = ROUTES.find((r) => r.id === routeId);
   const [flightSearch, setFlightSearch] = useState("");
   const [selectedFlight, setSelectedFlight] = useState<string | null>(null);
+  const [numPersons, setNumPersons] = useState(1);
 
   const selectedFlightData = selectedFlight
     ? MOCK_FLIGHTS.find((f) => f.flightNumber === selectedFlight)
