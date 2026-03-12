@@ -265,22 +265,34 @@ const RoutePage = () => {
             ) : (
               <div className="rounded-lg border border-dashed border-border bg-card p-8 text-center">
                 <Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground/30" />
-                <p className="mb-1 font-medium text-card-foreground">Noch keine Mitfahrer in deinem Zeitfenster</p>
-                <p className="mb-4 text-sm text-muted-foreground">
-                  Sei der Erste! Trage dich ein und andere mit ähnlicher Ankunftszeit werden dich finden.
-                </p>
-                {!userAlreadyJoined && (
-                  <button
-                    onClick={handleJoin}
-                    disabled={joinRide.isPending}
-                    className="rounded-lg bg-primary px-8 py-3 font-display font-semibold text-primary-foreground shadow-[var(--shadow-gold)] transition-all hover:brightness-110 disabled:opacity-50"
-                  >
-                    {joinRide.isPending ? (
-                      <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                    ) : (
-                      "Als Erster eintragen"
-                    )}
-                  </button>
+                {userAlreadyJoined ? (
+                  <>
+                    <p className="mb-1 font-medium text-card-foreground">Du bist eingetragen!</p>
+                    <p className="text-sm text-muted-foreground">
+                      Sobald andere mit ähnlicher Ankunftszeit dazukommen, siehst du sie hier.
+                    </p>
+                    <p className="mt-3 text-sm font-medium text-primary">
+                      ✓ Du bist bereits eingetragen
+                    </p>
+                  </>
+                ) : (
+                  <>
+                    <p className="mb-1 font-medium text-card-foreground">Noch keine Mitfahrer in deinem Zeitfenster</p>
+                    <p className="mb-4 text-sm text-muted-foreground">
+                      Sei der Erste! Trage dich ein und andere mit ähnlicher Ankunftszeit werden dich finden.
+                    </p>
+                    <button
+                      onClick={handleJoin}
+                      disabled={joinRide.isPending}
+                      className="rounded-lg bg-primary px-8 py-3 font-display font-semibold text-primary-foreground shadow-[var(--shadow-gold)] transition-all hover:brightness-110 disabled:opacity-50"
+                    >
+                      {joinRide.isPending ? (
+                        <Loader2 className="mx-auto h-5 w-5 animate-spin" />
+                      ) : (
+                        "Als Erster eintragen"
+                      )}
+                    </button>
+                  </>
                 )}
               </div>
             )}
