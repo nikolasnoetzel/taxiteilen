@@ -109,6 +109,7 @@ const RoutePage = () => {
       scheduledArrival: selectedFlightData.scheduledArrival,
       estimatedArrival: selectedFlightData.estimatedArrival,
       flightStatus: selectedFlightData.status,
+      numPersons,
     });
   };
 
