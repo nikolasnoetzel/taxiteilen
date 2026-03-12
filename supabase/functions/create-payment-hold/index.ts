@@ -118,10 +118,10 @@ serve(async (req) => {
     }
 
     // Adjust existing uncaptured PaymentIntents to new per-person amount
-    // Get total riders now (including the new one)
+    // Get total persons now (including the new one)
     const { data: allRiders } = await supabaseAdmin
       .from("ride_requests")
-      .select("id")
+      .select("id, num_persons")
       .eq("ride_group_id", ride_group_id);
 
     const { data: rideGroupData } = await supabaseAdmin
