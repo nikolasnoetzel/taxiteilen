@@ -52,14 +52,14 @@ export const ROUTES: Route[] = [
     estimatedDuration: "ca. 1 Std. 15 Min.",
     taxiCompanies: [
       {
-        name: "Vineta Taxi",
+        name: "Vineta / Mare Taxi Kiel",
         phone: "+4943177070",
-        description: "Zuverlässiger Taxiservice in Kiel mit Flughafentransfer-Erfahrung.",
+        description: "Große Taxizentrale in Kiel mit Flughafentransfer-Erfahrung.",
       },
       {
-        name: "Mare Taxi Kiel",
-        phone: "+4943177070",
-        description: "Komfortabler Taxi-Service für Langstrecken ab Kiel.",
+        name: "Taxi Kiel eG",
+        phone: "+49431680101",
+        description: "Genossenschaftliche Taxizentrale für Kiel und Umgebung.",
       },
     ],
   },
@@ -75,14 +75,14 @@ export const ROUTES: Route[] = [
     estimatedDuration: "ca. 1 Std. 15 Min.",
     taxiCompanies: [
       {
-        name: "Vineta Taxi",
+        name: "Vineta / Mare Taxi Kiel",
         phone: "+4943177070",
-        description: "Zuverlässiger Taxiservice in Kiel mit Flughafentransfer-Erfahrung.",
+        description: "Große Taxizentrale in Kiel mit Flughafentransfer-Erfahrung.",
       },
       {
-        name: "Mare Taxi Kiel",
-        phone: "+4943177070",
-        description: "Komfortabler Taxi-Service für Langstrecken ab Kiel.",
+        name: "Taxi Kiel eG",
+        phone: "+49431680101",
+        description: "Genossenschaftliche Taxizentrale für Kiel und Umgebung.",
       },
     ],
   },
