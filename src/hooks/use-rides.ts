@@ -13,6 +13,7 @@ export type RideRequestRow = {
   estimated_arrival: string;
   flight_status: string;
   is_initiator: boolean;
+  num_persons: number;
   created_at: string;
   profile?: { full_name: string | null } | null;
 };
@@ -69,6 +70,7 @@ export function useJoinRide(routeId: string | undefined) {
       scheduledArrival: string;
       estimatedArrival: string;
       flightStatus: string;
+      numPersons?: number;
     }) => {
       if (!user || !routeId) throw new Error("Nicht eingeloggt");
 
@@ -113,7 +115,8 @@ export function useJoinRide(routeId: string | undefined) {
         estimated_arrival: params.estimatedArrival,
         flight_status: params.flightStatus,
         is_initiator: !openGroup,
-      });
+        num_persons: params.numPersons || 1,
+      } as any);
 
       if (error) throw error;
     },

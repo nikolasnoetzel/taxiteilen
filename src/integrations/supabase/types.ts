@@ -147,6 +147,7 @@ export type Database = {
           flight_status: string
           id: string
           is_initiator: boolean
+          num_persons: number
           ride_group_id: string
           route_id: string
           scheduled_arrival: string
@@ -159,6 +160,7 @@ export type Database = {
           flight_status?: string
           id?: string
           is_initiator?: boolean
+          num_persons?: number
           ride_group_id: string
           route_id: string
           scheduled_arrival: string
@@ -171,6 +173,7 @@ export type Database = {
           flight_status?: string
           id?: string
           is_initiator?: boolean
+          num_persons?: number
           ride_group_id?: string
           route_id?: string
           scheduled_arrival?: string

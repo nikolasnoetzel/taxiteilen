@@ -1,0 +1,1 @@
+ALTER TABLE public.ride_requests ADD COLUMN num_persons integer NOT NULL DEFAULT 1;

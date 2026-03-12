@@ -46,6 +46,7 @@ const RoutePage = () => {
   const route = ROUTES.find((r) => r.id === routeId);
   const [flightSearch, setFlightSearch] = useState("");
   const [selectedFlight, setSelectedFlight] = useState<string | null>(null);
+  const [numPersons, setNumPersons] = useState(1);
 
   const selectedFlightData = selectedFlight
     ? MOCK_FLIGHTS.find((f) => f.flightNumber === selectedFlight)
@@ -92,10 +93,10 @@ const RoutePage = () => {
   const otherRequests = rideRequests.filter((r) => r.user_id !== user?.id);
   const userAlreadyJoined = rideRequests.some((r) => r.user_id === user?.id);
   const userIsInitiator = rideRequests.some((r) => r.user_id === user?.id && r.is_initiator);
-  const totalRiders = rideRequests.length + (userAlreadyJoined ? 0 : 1); // +1 for potential join
+  const totalPersons = rideRequests.reduce((sum, r) => sum + (r.num_persons || 1), 0) + (userAlreadyJoined ? 0 : numPersons);
   const estimatedTotal = (route.estimatedPrice.min + route.estimatedPrice.max) / 2;
   const rideGroupId = rideRequests.length > 0 ? rideRequests[0].ride_group_id : null;
-  const estimatedPerPersonCents = Math.round(getCostPerPerson(estimatedTotal, totalRiders) * 100);
+  const estimatedPerPersonCents = Math.round(getCostPerPerson(estimatedTotal, totalPersons) * numPersons * 100);
 
   const handleJoin = () => {
     if (!user) {
@@ -108,6 +109,7 @@ const RoutePage = () => {
       scheduledArrival: selectedFlightData.scheduledArrival,
       estimatedArrival: selectedFlightData.estimatedArrival,
       flightStatus: selectedFlightData.status,
+      numPersons,
     });
   };
 
@@ -225,6 +227,7 @@ const RoutePage = () => {
                       </div>
                       <div className="text-sm text-muted-foreground">
                         Ankunft {req.estimated_arrival}
+                        {(req.num_persons || 1) > 1 && ` · ${req.num_persons} Personen`}
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
@@ -241,15 +244,44 @@ const RoutePage = () => {
                 {/* Cost preview */}
                 <div className="rounded-lg bg-secondary p-5 text-center">
                   <p className="mb-1 text-sm text-secondary-foreground/60">
-                    Geschätzte Kosten pro Person ({rideRequests.length + (userAlreadyJoined ? 0 : 1)} Personen, inkl. 10% Gebühr)
+                    Geschätzte Kosten pro Person ({totalPersons} Personen, inkl. 10% Gebühr)
                   </p>
                   <p className="font-display text-3xl font-bold text-secondary-foreground">
-                    {getCostPerPerson(estimatedTotal, rideRequests.length + (userAlreadyJoined ? 0 : 1))} €
+                    {getCostPerPerson(estimatedTotal, totalPersons)} €
                   </p>
                 </div>
 
                 {!userAlreadyJoined && (
                   <div className="space-y-3">
+                    {/* Personenanzahl */}
+                    <div className="flex items-center justify-between rounded-lg border border-border bg-card p-4">
+                      <span className="text-sm font-medium text-card-foreground">
+                        <Users className="mb-0.5 mr-1.5 inline-block h-4 w-4 text-primary" />
+                        Für wie viele Personen?
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setNumPersons(Math.max(1, numPersons - 1))}
+                          className="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-card-foreground transition-colors hover:bg-muted"
+                        >
+                          −
+                        </button>
+                        <span className="w-6 text-center font-display font-semibold text-card-foreground">{numPersons}</span>
+                        <button
+                          type="button"
+                          onClick={() => setNumPersons(Math.min(4, numPersons + 1))}
+                          className="flex h-8 w-8 items-center justify-center rounded-md border border-input bg-background text-card-foreground transition-colors hover:bg-muted"
+                        >
+                          +
+                        </button>
+                      </div>
+                    </div>
+                    {numPersons > 1 && (
+                      <p className="text-center text-xs text-muted-foreground">
+                        Du zahlst für {numPersons} Personen: ca. {getCostPerPerson(estimatedTotal, totalPersons) * numPersons} €
+                      </p>
+                    )}
                     <button
                       onClick={handleJoin}
                       disabled={joinRide.isPending}
@@ -258,7 +290,7 @@ const RoutePage = () => {
                       {joinRide.isPending ? (
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
                       ) : (
-                        "Jetzt beitreten & Taxi teilen"
+                        `Jetzt beitreten & Taxi teilen${numPersons > 1 ? ` (${numPersons} Pers.)` : ""}`
                       )}
                     </button>
                     {rideGroupId && (
@@ -281,7 +313,7 @@ const RoutePage = () => {
                 {userIsInitiator && rideGroupId && (
                   <FinalizeRide
                     rideGroupId={rideGroupId}
-                    numRiders={rideRequests.length}
+                    numRiders={rideRequests.reduce((sum, r) => sum + (r.num_persons || 1), 0)}
                   />
                 )}
               </div>

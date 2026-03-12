@@ -43,20 +43,19 @@ serve(async (req) => {
       throw new Error("Only the initiator can finalize the ride");
     }
 
-    // Get all riders in this group
+    // Get all riders in this group (with num_persons)
     const { data: rideRequests } = await supabaseAdmin
       .from("ride_requests")
-      .select("user_id")
+      .select("user_id, num_persons")
       .eq("ride_group_id", ride_group_id);
 
     if (!rideRequests || rideRequests.length === 0) {
       throw new Error("No riders found");
     }
 
-    const numRiders = rideRequests.length;
-    const perPersonCents = Math.ceil(final_price_cents / numRiders);
+    const totalPersons = rideRequests.reduce((sum: number, r: any) => sum + (r.num_persons || 1), 0);
+    const perPersonCents = Math.ceil(final_price_cents / totalPersons);
     const platformFeeCents = Math.round(perPersonCents * 0.1);
-    const captureAmountCents = perPersonCents + platformFeeCents;
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -73,8 +72,12 @@ serve(async (req) => {
 
     for (const payment of (payments || [])) {
       try {
-        // Capture the correct amount (may be less than authorized)
-        const finalAmount = Math.min(captureAmountCents, payment.amount_authorized);
+        // Find the rider's num_persons to calculate their share
+        const rider = rideRequests.find((r: any) => r.user_id === payment.user_id);
+        const riderPersons = rider?.num_persons || 1;
+        const riderShare = perPersonCents * riderPersons;
+        const riderFee = Math.round(riderShare * 0.1);
+        const finalAmount = Math.min(riderShare + riderFee, payment.amount_authorized);
         
         const paymentIntent = await stripe.paymentIntents.capture(
           payment.stripe_payment_intent_id,
@@ -87,7 +90,7 @@ serve(async (req) => {
           .from("payments")
           .update({
             amount_captured: finalAmount,
-            platform_fee: platformFeeCents,
+            platform_fee: riderFee,
             status: "captured",
           })
           .eq("id", payment.id);
