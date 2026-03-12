@@ -29,6 +29,7 @@ const App = () => (
             <Route path="/route/:routeId" element={<RoutePage />} />
             <Route path="/datenschutz" element={<Datenschutz />} />
             <Route path="/agb" element={<AGB />} />
+            <Route path="/impressum" element={<Impressum />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/stripe-onboarding" element={<StripeOnboarding />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
