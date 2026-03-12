@@ -1,8 +1,8 @@
-import { useState } from "react";
+import { useState, forwardRef } from "react";
 import { motion } from "framer-motion";
 import { Users, Euro, Percent } from "lucide-react";
 
-const CostCalculator = () => {
+const CostCalculator = forwardRef<HTMLElement>((_, ref) => {
   const [totalCost, setTotalCost] = useState(125);
   const [numPeople, setNumPeople] = useState(2);
 
