@@ -14,9 +14,10 @@ import {
   Loader2,
   CreditCard,
 } from "lucide-react";
-import { ROUTES, MOCK_FLIGHTS, getCostPerPerson } from "@/lib/data";
+import { ROUTES, getCostPerPerson } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRideRequests, useJoinRide } from "@/hooks/use-rides";
+import { useFlights } from "@/hooks/use-flights";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
@@ -48,8 +49,10 @@ const RoutePage = () => {
   const [selectedFlight, setSelectedFlight] = useState<string | null>(null);
   const [numPersons, setNumPersons] = useState(1);
 
+  const { data: flights = [], isLoading: loadingFlights } = useFlights(route?.airportCode);
+
   const selectedFlightData = selectedFlight
-    ? MOCK_FLIGHTS.find((f) => f.flightNumber === selectedFlight)
+    ? flights.find((f) => f.flightNumber === selectedFlight)
     : null;
 
   const { data: rideRequests = [], isLoading: loadingRequests } = useRideRequests(
@@ -83,7 +86,7 @@ const RoutePage = () => {
     );
   }
 
-  const filteredFlights = MOCK_FLIGHTS.filter(
+  const filteredFlights = flights.filter(
     (f) =>
       f.flightNumber.toLowerCase().includes(flightSearch.toLowerCase()) ||
       f.origin.toLowerCase().includes(flightSearch.toLowerCase())
@@ -156,7 +159,14 @@ const RoutePage = () => {
 
           {/* Flight list */}
           <div className="mt-4 space-y-2">
-            {filteredFlights.map((flight) => (
+            {loadingFlights ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                <span className="ml-2 text-sm text-muted-foreground">Flüge werden geladen…</span>
+              </div>
+            ) : filteredFlights.length === 0 ? (
+              <p className="py-4 text-center text-sm text-muted-foreground">Keine Flüge gefunden.</p>
+            ) : filteredFlights.map((flight) => (
               <motion.button
                 key={flight.flightNumber}
                 layout
