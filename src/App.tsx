@@ -11,6 +11,7 @@ import AGB from "./pages/AGB.tsx";
 import Auth from "./pages/Auth.tsx";
 import StripeOnboarding from "./pages/StripeOnboarding.tsx";
 import PaymentSuccess from "./pages/PaymentSuccess.tsx";
+import ResetPassword from "./pages/ResetPassword.tsx";
 import NotFound from "./pages/NotFound.tsx";
 
 const queryClient = new QueryClient();
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/auth" element={<Auth />} />
             <Route path="/stripe-onboarding" element={<StripeOnboarding />} />
             <Route path="/payment-success" element={<PaymentSuccess />} />
+            <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </AuthProvider>
