@@ -83,6 +83,7 @@ serve(async (req) => {
       mode: "payment",
       payment_intent_data: {
         capture_method: "manual",
+        receipt_email: user.email!,
         transfer_data: {
           destination: initiatorProfile.stripe_connect_account_id,
         },
