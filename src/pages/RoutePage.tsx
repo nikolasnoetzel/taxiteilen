@@ -22,6 +22,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PaymentButton from "@/components/PaymentButton";
 import FinalizeRide from "@/components/FinalizeRide";
+import GroupChat from "@/components/GroupChat";
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, { label: string; className: string }> = {
