@@ -22,6 +22,7 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PaymentButton from "@/components/PaymentButton";
 import FinalizeRide from "@/components/FinalizeRide";
+import GroupChat from "@/components/GroupChat";
 
 const StatusBadge = ({ status }: { status: string }) => {
   const config: Record<string, { label: string; className: string }> = {
@@ -375,9 +376,17 @@ const RoutePage = () => {
                 )}
 
                 {userAlreadyJoined && (
-                  <p className="text-center text-sm font-medium text-primary">
-                    ✓ Du bist bereits eingetragen
-                  </p>
+                  <div className="space-y-3">
+                    <p className="text-center text-sm font-medium text-primary">
+                      ✓ Du bist bereits eingetragen
+                    </p>
+                    {rideGroupId && (
+                      <GroupChat
+                        rideGroupId={rideGroupId}
+                        routeName={`${route.from} → ${route.to}`}
+                      />
+                    )}
+                  </div>
                 )}
 
                 {/* Initiator can finalize the ride */}
