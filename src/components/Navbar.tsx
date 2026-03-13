@@ -57,8 +57,14 @@ const Navbar = () => {
             So funktioniert's
           </a>
           {user ? (
-            <button onClick={() => { signOut(); setOpen(false); }} className="block py-2 text-sm font-medium text-foreground">
-              Abmelden
+            <>
+              <Link to="/dashboard" onClick={() => setOpen(false)} className="block py-2 text-sm font-medium text-foreground">
+                Meine Fahrten
+              </Link>
+              <button onClick={() => { signOut(); setOpen(false); }} className="block py-2 text-sm font-medium text-foreground">
+                Abmelden
+              </button>
+            </>
             </button>
           ) : (
             <Link to="/auth" onClick={() => setOpen(false)} className="block py-2 text-sm font-medium text-primary">
