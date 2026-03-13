@@ -25,10 +25,15 @@ const Navbar = () => {
             So funktioniert's
           </a>
           {user ? (
-            <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5">
-              <LogOut className="h-4 w-4" />
-              Abmelden
-            </Button>
+            <div className="flex items-center gap-3">
+              <Link to="/dashboard" className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors">
+                Meine Fahrten
+              </Link>
+              <Button variant="ghost" size="sm" onClick={signOut} className="gap-1.5">
+                <LogOut className="h-4 w-4" />
+                Abmelden
+              </Button>
+            </div>
           ) : (
             <Link to="/auth">
               <Button variant="hero" size="sm">Anmelden</Button>
