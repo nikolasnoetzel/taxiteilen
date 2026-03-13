@@ -65,7 +65,6 @@ const Navbar = () => {
                 Abmelden
               </button>
             </>
-            </button>
           ) : (
             <Link to="/auth" onClick={() => setOpen(false)} className="block py-2 text-sm font-medium text-primary">
               Anmelden
