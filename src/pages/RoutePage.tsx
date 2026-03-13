@@ -1,6 +1,6 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { useQueryClient } from "@tanstack/react-query";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft,
@@ -12,7 +12,6 @@ import {
   CheckCircle,
   Search,
   Loader2,
-  CreditCard,
 } from "lucide-react";
 import { ROUTES, getCostPerPerson } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
@@ -48,6 +47,10 @@ const RoutePage = () => {
   const [flightSearch, setFlightSearch] = useState("");
   const [selectedFlight, setSelectedFlight] = useState<string | null>(null);
   const [numPersons, setNumPersons] = useState(1);
+  const ridersRef = useRef<HTMLDivElement>(null);
+
+  // Determine direction: is destination the airport?
+  const isToAirport = route ? route.toShort === route.airportCode : false;
 
   const { data: flights = [], isLoading: loadingFlights } = useFlights(route?.airportCode);
 
@@ -61,6 +64,15 @@ const RoutePage = () => {
   );
 
   const joinRide = useJoinRide(routeId);
+
+  // Auto-scroll to riders section when flight is selected
+  useEffect(() => {
+    if (selectedFlight && ridersRef.current) {
+      setTimeout(() => {
+        ridersRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 200);
+    }
+  }, [selectedFlight]);
 
   // Realtime subscription for live updates
   const queryClient = useQueryClient();
@@ -86,11 +98,29 @@ const RoutePage = () => {
     );
   }
 
-  const filteredFlights = flights.filter(
-    (f) =>
-      f.flightNumber.toLowerCase().includes(flightSearch.toLowerCase()) ||
-      f.origin.toLowerCase().includes(flightSearch.toLowerCase())
-  );
+  // Filter flights: search text + for to-airport routes only show future flights
+  const now = new Date();
+  const nowMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const filteredFlights = flights
+    .filter((f) => {
+      const matchesSearch =
+        f.flightNumber.toLowerCase().includes(flightSearch.toLowerCase()) ||
+        f.origin.toLowerCase().includes(flightSearch.toLowerCase());
+      if (!matchesSearch) return false;
+
+      // For to-airport routes, only show future departures
+      if (isToAirport) {
+        const [h, m] = f.scheduledArrival.split(":").map(Number);
+        return h * 60 + m > nowMinutes;
+      }
+
+      // For from-airport routes, also only show future arrivals (not yet landed)
+      if (f.status === "landed") return false;
+      const [h, m] = f.scheduledArrival.split(":").map(Number);
+      return h * 60 + m > nowMinutes - 30; // show flights arriving within last 30min too
+    })
+    .slice(0, 10); // Max 10 flights shown
 
   // Exclude current user from display count
   const otherRequests = rideRequests.filter((r) => r.user_id !== user?.id);
@@ -115,6 +145,15 @@ const RoutePage = () => {
       numPersons,
     });
   };
+
+  // Labels based on direction
+  const flightSectionTitle = isToAirport
+    ? "Wann willst du am Flughafen sein?"
+    : "Wann kommst du an?";
+  const flightSearchPlaceholder = isToAirport
+    ? "z.B. LH 2084 oder Abflugzeit"
+    : "z.B. LH 2084 oder München";
+  const timeLabel = isToAirport ? "Abflug" : "Ankunft";
 
   return (
     <div className="flex min-h-screen flex-col bg-background">
@@ -144,13 +183,20 @@ const RoutePage = () => {
         <div className="mb-8">
           <h2 className="mb-4 font-display text-xl font-semibold text-foreground">
             <Plane className="mb-0.5 mr-2 inline-block h-5 w-5 text-primary" />
-            Wann kommst du an?
+            {flightSectionTitle}
           </h2>
+
+          {isToAirport && (
+            <p className="mb-3 text-sm text-muted-foreground">
+              Wähle deinen Flug aus, damit wir Mitfahrer mit ähnlicher Abflugzeit finden können.
+            </p>
+          )}
+
           <div className="relative">
             <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
             <input
               type="text"
-              placeholder="z.B. LH 2084 oder München"
+              placeholder={flightSearchPlaceholder}
               value={flightSearch}
               onChange={(e) => setFlightSearch(e.target.value)}
               className="w-full rounded-lg border border-input bg-card py-3 pl-11 pr-4 text-card-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring"
@@ -166,48 +212,58 @@ const RoutePage = () => {
               </div>
             ) : filteredFlights.length === 0 ? (
               <p className="py-4 text-center text-sm text-muted-foreground">Keine Flüge gefunden.</p>
-            ) : filteredFlights.map((flight) => (
-              <motion.button
-                key={flight.flightNumber}
-                layout
-                onClick={() => setSelectedFlight(flight.flightNumber)}
-                className={`flex w-full items-center justify-between rounded-lg border p-4 text-left transition-all ${
-                  selectedFlight === flight.flightNumber
-                    ? "border-primary bg-primary/5 taxi-shadow-card"
-                    : "border-border bg-card hover:border-primary/30"
-                }`}
-              >
-                <div>
-                  <div className="font-display font-semibold text-card-foreground">
-                    {flight.flightNumber}
-                  </div>
-                  <div className="text-sm text-muted-foreground">
-                    {flight.airline} · aus {flight.origin} ({flight.originCode})
-                  </div>
-                  {flight.gate && (
-                    <div className="text-xs text-muted-foreground">
-                      Gate {flight.gate} · {flight.terminal}
+            ) : (
+              <>
+                {filteredFlights.map((flight) => (
+                  <motion.button
+                    key={flight.flightNumber}
+                    layout
+                    onClick={() => setSelectedFlight(flight.flightNumber)}
+                    className={`flex w-full items-center justify-between rounded-lg border p-4 text-left transition-all ${
+                      selectedFlight === flight.flightNumber
+                        ? "border-primary bg-primary/5 taxi-shadow-card"
+                        : "border-border bg-card hover:border-primary/30"
+                    }`}
+                  >
+                    <div>
+                      <div className="font-display font-semibold text-card-foreground">
+                        {flight.flightNumber}
+                      </div>
+                      <div className="text-sm text-muted-foreground">
+                        {flight.airline} · {isToAirport ? "nach" : "aus"} {flight.origin} ({flight.originCode})
+                      </div>
+                      {flight.gate && (
+                        <div className="text-xs text-muted-foreground">
+                          Gate {flight.gate} · {flight.terminal}
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-                <div className="text-right">
-                  <div className="flex items-center gap-1.5 text-sm text-card-foreground">
-                    <Clock className="h-3.5 w-3.5" />
-                    {flight.scheduledArrival}
-                    {flight.estimatedArrival !== flight.scheduledArrival && (
-                      <span className="text-xs text-primary">→ {flight.estimatedArrival}</span>
-                    )}
-                  </div>
-                  <StatusBadge status={flight.status} />
-                </div>
-              </motion.button>
-            ))}
+                    <div className="text-right">
+                      <div className="flex items-center gap-1.5 text-sm text-card-foreground">
+                        <Clock className="h-3.5 w-3.5" />
+                        {flight.scheduledArrival}
+                        {flight.estimatedArrival !== flight.scheduledArrival && (
+                          <span className="text-xs text-primary">→ {flight.estimatedArrival}</span>
+                        )}
+                      </div>
+                      <StatusBadge status={flight.status} />
+                    </div>
+                  </motion.button>
+                ))}
+                {flights.length > 10 && filteredFlights.length === 10 && !flightSearch && (
+                  <p className="text-center text-xs text-muted-foreground">
+                    Nutze die Suche um weitere Flüge zu finden
+                  </p>
+                )}
+              </>
+            )}
           </div>
         </div>
 
         {/* Matching riders */}
         {selectedFlight && (
           <motion.div
+            ref={ridersRef}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             className="mb-8"
@@ -217,7 +273,7 @@ const RoutePage = () => {
               Mitfahrer in deinem Zeitfenster
             </h2>
             <p className="mb-4 text-sm text-muted-foreground">
-              Personen die ±60 Minuten um {selectedFlightData?.estimatedArrival} Uhr ankommen
+              Personen die ±60 Minuten um {selectedFlightData?.estimatedArrival} Uhr {isToAirport ? "abfliegen" : "ankommen"}
             </p>
 
             {loadingRequests ? (
@@ -233,10 +289,13 @@ const RoutePage = () => {
                   >
                     <div>
                       <div className="font-medium text-card-foreground">
-                        {req.profile?.full_name || "Mitfahrer"}
+                        {/* Anonymized: show only first name initial */}
+                        {req.profile?.full_name
+                          ? `${req.profile.full_name.split(" ")[0].charAt(0)}. (Mitfahrer)`
+                          : "Mitfahrer"}
                       </div>
                       <div className="text-sm text-muted-foreground">
-                        Ankunft {req.estimated_arrival}
+                        {timeLabel} {req.estimated_arrival}
                         {(req.num_persons || 1) > 1 && ` · ${req.num_persons} Personen`}
                       </div>
                     </div>
@@ -299,11 +358,13 @@ const RoutePage = () => {
                     >
                       {joinRide.isPending ? (
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                      ) : (
+                      ) : user ? (
                         `Jetzt beitreten & Taxi teilen${numPersons > 1 ? ` (${numPersons} Pers.)` : ""}`
+                      ) : (
+                        "Anmelden & beitreten"
                       )}
                     </button>
-                    {rideGroupId && (
+                    {rideGroupId && user && (
                       <PaymentButton
                         rideGroupId={rideGroupId}
                         estimatedAmountCents={estimatedPerPersonCents}
@@ -334,7 +395,7 @@ const RoutePage = () => {
                   <>
                     <p className="mb-1 font-medium text-card-foreground">Du bist eingetragen!</p>
                     <p className="text-sm text-muted-foreground">
-                      Sobald andere mit ähnlicher Ankunftszeit dazukommen, siehst du sie hier.
+                      Sobald andere mit ähnlicher {isToAirport ? "Abflugzeit" : "Ankunftszeit"} dazukommen, siehst du sie hier.
                     </p>
                     <p className="mt-3 text-sm font-medium text-primary">
                       ✓ Du bist bereits eingetragen
@@ -344,7 +405,7 @@ const RoutePage = () => {
                   <>
                     <p className="mb-1 font-medium text-card-foreground">Noch keine Mitfahrer in deinem Zeitfenster</p>
                     <p className="mb-4 text-sm text-muted-foreground">
-                      Sei der Erste! Trage dich ein und andere mit ähnlicher Ankunftszeit werden dich finden.
+                      Sei der Erste! Trage dich ein und andere mit ähnlicher {isToAirport ? "Abflugzeit" : "Ankunftszeit"} werden dich finden.
                     </p>
                     <button
                       onClick={handleJoin}
@@ -353,8 +414,10 @@ const RoutePage = () => {
                     >
                       {joinRide.isPending ? (
                         <Loader2 className="mx-auto h-5 w-5 animate-spin" />
-                      ) : (
+                      ) : user ? (
                         "Als Erster eintragen"
+                      ) : (
+                        "Anmelden & als Erster eintragen"
                       )}
                     </button>
                   </>
