@@ -74,15 +74,26 @@ export function useJoinRide(routeId: string | undefined) {
     }) => {
       if (!user || !routeId) throw new Error("Nicht eingeloggt");
 
-      // Check if user already has a request for this route
+      // Check if user already has a request for this route in an OPEN group
       const { data: existing } = await supabase
         .from("ride_requests")
-        .select("id")
+        .select("id, ride_group_id")
         .eq("user_id", user.id)
-        .eq("route_id", routeId)
-        .maybeSingle();
+        .eq("route_id", routeId);
 
-      if (existing) throw new Error("Du bist bereits für diese Route eingetragen.");
+      if (existing && existing.length > 0) {
+        // Check if any of these are in an open ride group
+        const groupIds = [...new Set(existing.map((r) => r.ride_group_id))];
+        const { data: openGroups } = await supabase
+          .from("ride_groups")
+          .select("id")
+          .in("id", groupIds)
+          .eq("status", "open");
+
+        if (openGroups && openGroups.length > 0) {
+          throw new Error("Du bist bereits für diese Route eingetragen.");
+        }
+      }
 
       // Find an open group for this route, or create one
       let groupId: string;
