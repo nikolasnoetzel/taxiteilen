@@ -11,6 +11,7 @@ import {
   Mail,
   Phone,
   ArrowRight,
+  Timer,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useMyRides } from "@/hooks/use-profile";
