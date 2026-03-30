@@ -365,13 +365,6 @@ const RoutePage = () => {
                         "Anmelden & beitreten"
                       )}
                     </button>
-                    {rideGroupId && user && (
-                      <PaymentButton
-                        rideGroupId={rideGroupId}
-                        estimatedAmountCents={estimatedPerPersonCents}
-                        disabled={joinRide.isPending}
-                      />
-                    )}
                   </div>
                 )}
 
