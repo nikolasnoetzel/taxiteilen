@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
