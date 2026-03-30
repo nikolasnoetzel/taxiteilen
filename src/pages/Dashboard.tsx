@@ -11,6 +11,7 @@ import {
   Mail,
   Phone,
   ArrowRight,
+  Timer,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useProfile, useMyRides } from "@/hooks/use-profile";
@@ -154,11 +155,21 @@ const Dashboard = () => {
   );
 };
 
+function getPaymentDaysLeft(createdAt: string): number {
+  const created = new Date(createdAt);
+  const expiresAt = new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  return Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+}
+
 function RideCard({ ride }: { ride: any }) {
   const route = ROUTES.find((r) => r.id === ride.route_id);
   const status = statusLabels[ride.group?.status || "open"];
   const payment = ride.payment ? paymentLabels[ride.payment.status] || null : null;
   const StatusIcon = status.icon;
+
+  const showExpiry = ride.payment && (ride.payment.status === "authorized" || ride.payment.status === "pending");
+  const daysLeft = showExpiry ? getPaymentDaysLeft(ride.payment.created_at) : null;
 
   return (
     <Link
@@ -192,6 +203,18 @@ function RideCard({ ride }: { ride: any }) {
               <CreditCard className="h-3 w-3" />
               {payment.label}
               {ride.payment?.amount_captured && ` · ${(ride.payment.amount_captured / 100).toFixed(2)} €`}
+            </span>
+          )}
+          {showExpiry && daysLeft !== null && (
+            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+              daysLeft === 0
+                ? "bg-destructive/10 text-destructive"
+                : daysLeft <= 2
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                  : "bg-muted text-muted-foreground"
+            }`}>
+              <Timer className="h-3 w-3" />
+              {daysLeft === 0 ? "Abgelaufen" : `${daysLeft}d übrig`}
             </span>
           )}
         </div>

@@ -12,6 +12,7 @@ import {
   CheckCircle,
   Search,
   Loader2,
+  Timer,
 } from "lucide-react";
 import { ROUTES, getCostPerPerson } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
@@ -40,6 +41,37 @@ const StatusBadge = ({ status }: { status: string }) => {
   );
 };
 
+function getPaymentDaysLeft(createdAt: string): number {
+  const created = new Date(createdAt);
+  const expiresAt = new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000);
+  const now = new Date();
+  return Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
+}
+
+const PaymentExpiryBadge = ({ createdAt }: { createdAt: string }) => {
+  const daysLeft = getPaymentDaysLeft(createdAt);
+  if (daysLeft === 0) {
+    return (
+      <p className="mt-1 text-xs font-medium text-destructive">
+        ⚠️ Reservierung abgelaufen
+      </p>
+    );
+  }
+  if (daysLeft <= 2) {
+    return (
+      <p className="mt-1 text-xs font-medium text-amber-600 dark:text-amber-400">
+        <Timer className="mb-0.5 mr-0.5 inline-block h-3 w-3" />
+        Läuft in {daysLeft} {daysLeft === 1 ? "Tag" : "Tagen"} ab
+      </p>
+    );
+  }
+  return (
+    <p className="mt-1 text-xs text-muted-foreground">
+      Gültig noch {daysLeft} Tage
+    </p>
+  );
+};
+
 const UserJoinedSection = ({
   rideGroupId,
   routeFrom,
@@ -61,7 +93,7 @@ const UserJoinedSection = ({
       if (!rideGroupId || !userId) return null;
       const { data } = await supabase
         .from("payments")
-        .select("id, status, amount_authorized")
+        .select("id, status, amount_authorized, created_at")
         .eq("ride_group_id", rideGroupId)
         .eq("user_id", userId)
         .limit(1)
@@ -85,7 +117,6 @@ const UserJoinedSection = ({
         ✓ Du bist bereits eingetragen
       </p>
 
-      {/* Payment section for non-initiators */}
       {!userIsInitiator && rideGroupId && !loadingPayment && (
         existingPayment ? (
           <div className="rounded-lg border border-border bg-card p-4 text-center">
@@ -95,6 +126,9 @@ const UserJoinedSection = ({
             <p className="text-xs text-muted-foreground">
               {(existingPayment.amount_authorized / 100).toFixed(0)} € reserviert
             </p>
+            {(existingPayment.status === "authorized" || existingPayment.status === "pending") && (
+              <PaymentExpiryBadge createdAt={existingPayment.created_at} />
+            )}
           </div>
         ) : (
           <PaymentButton
