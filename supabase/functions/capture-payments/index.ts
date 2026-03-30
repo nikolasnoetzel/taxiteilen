@@ -76,8 +76,7 @@ serve(async (req) => {
         const rider = rideRequests.find((r: any) => r.user_id === payment.user_id);
         const riderPersons = rider?.num_persons || 1;
         const riderShare = perPersonCents * riderPersons;
-        const riderFee = Math.round(riderShare * 0.1);
-        const finalAmount = Math.min(riderShare + riderFee, payment.amount_authorized);
+        const finalAmount = Math.min(riderShare, payment.amount_authorized);
         
         const paymentIntent = await stripe.paymentIntents.capture(
           payment.stripe_payment_intent_id,
@@ -90,7 +89,7 @@ serve(async (req) => {
           .from("payments")
           .update({
             amount_captured: finalAmount,
-            platform_fee: riderFee,
+            platform_fee: Math.round(finalAmount * 0.1),
             status: "captured",
           })
           .eq("id", payment.id);
@@ -108,34 +107,7 @@ serve(async (req) => {
       }
     }
 
-    // Transfer funds to initiator's Stripe Connect account
-    const { data: initiatorProfile } = await supabaseAdmin
-      .from("profiles")
-      .select("stripe_connect_account_id, stripe_connect_onboarding_complete")
-      .eq("user_id", user.id)
-      .single();
-
-    if (initiatorProfile?.stripe_connect_account_id && initiatorProfile?.stripe_connect_onboarding_complete) {
-      const capturedResults = results.filter(r => r.status === "captured");
-      const totalCaptured = capturedResults.reduce((sum, r) => sum + (r.amount || 0), 0);
-      const totalPlatformFee = Math.round(totalCaptured * 0.1 / 1.1); // extract the 10% fee portion
-      const transferAmount = totalCaptured - totalPlatformFee;
-
-      if (transferAmount > 0) {
-        try {
-          await stripe.transfers.create({
-            amount: transferAmount,
-            currency: "eur",
-            destination: initiatorProfile.stripe_connect_account_id,
-            description: `TaxiTeilen Fahrt ${ride_group_id.substring(0, 8)}`,
-          });
-          console.log(`Transfer of ${transferAmount} cents to ${initiatorProfile.stripe_connect_account_id}`);
-        } catch (transferErr) {
-          console.error("Transfer to initiator failed:", transferErr);
-          // Don't fail the whole request – payments are captured, transfer can be retried
-        }
-      }
-    }
+    // Transfers happen automatically via destination charges (transfer_data.destination set in create-payment-hold)
 
     // Update ride group with final price and status
     await supabaseAdmin
