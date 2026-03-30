@@ -369,17 +369,14 @@ const RoutePage = () => {
                 )}
 
                 {userAlreadyJoined && (
-                  <div className="space-y-3">
-                    <p className="text-center text-sm font-medium text-primary">
-                      ✓ Du bist bereits eingetragen
-                    </p>
-                    {rideGroupId && (
-                      <GroupChat
-                        rideGroupId={rideGroupId}
-                        routeName={`${route.from} → ${route.to}`}
-                      />
-                    )}
-                  </div>
+                  <UserJoinedSection
+                    rideGroupId={rideGroupId}
+                    routeFrom={route.from}
+                    routeTo={route.to}
+                    userIsInitiator={userIsInitiator}
+                    estimatedPerPersonCents={estimatedPerPersonCents}
+                    userId={user?.id}
+                  />
                 )}
 
                 {/* Initiator can finalize the ride */}
