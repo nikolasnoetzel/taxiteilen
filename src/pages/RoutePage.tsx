@@ -1,5 +1,5 @@
 import { useParams, Link, useNavigate } from "react-router-dom";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import {
@@ -37,6 +37,80 @@ const StatusBadge = ({ status }: { status: string }) => {
       {status === "on-time" ? <CheckCircle className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
       {c.label}
     </span>
+  );
+};
+
+const UserJoinedSection = ({
+  rideGroupId,
+  routeFrom,
+  routeTo,
+  userIsInitiator,
+  estimatedPerPersonCents,
+  userId,
+}: {
+  rideGroupId: string | null;
+  routeFrom: string;
+  routeTo: string;
+  userIsInitiator: boolean;
+  estimatedPerPersonCents: number;
+  userId?: string;
+}) => {
+  const { data: existingPayment, isLoading: loadingPayment } = useQuery({
+    queryKey: ["user-payment", rideGroupId, userId],
+    queryFn: async () => {
+      if (!rideGroupId || !userId) return null;
+      const { data } = await supabase
+        .from("payments")
+        .select("id, status, amount_authorized")
+        .eq("ride_group_id", rideGroupId)
+        .eq("user_id", userId)
+        .limit(1)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!rideGroupId && !!userId && !userIsInitiator,
+  });
+
+  const paymentStatusLabel: Record<string, string> = {
+    pending: "Zahlung wird verarbeitet…",
+    authorized: "Betrag reserviert ✓",
+    captured: "Bezahlt ✓",
+    canceled: "Storniert",
+    failed: "Fehlgeschlagen",
+  };
+
+  return (
+    <div className="space-y-3">
+      <p className="text-center text-sm font-medium text-primary">
+        ✓ Du bist bereits eingetragen
+      </p>
+
+      {/* Payment section for non-initiators */}
+      {!userIsInitiator && rideGroupId && !loadingPayment && (
+        existingPayment ? (
+          <div className="rounded-lg border border-border bg-card p-4 text-center">
+            <p className="text-sm font-medium text-card-foreground">
+              {paymentStatusLabel[existingPayment.status] || existingPayment.status}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {(existingPayment.amount_authorized / 100).toFixed(0)} € reserviert
+            </p>
+          </div>
+        ) : (
+          <PaymentButton
+            rideGroupId={rideGroupId}
+            estimatedAmountCents={estimatedPerPersonCents}
+          />
+        )
+      )}
+
+      {rideGroupId && (
+        <GroupChat
+          rideGroupId={rideGroupId}
+          routeName={`${routeFrom} → ${routeTo}`}
+        />
+      )}
+    </div>
   );
 };
 
@@ -365,28 +439,18 @@ const RoutePage = () => {
                         "Anmelden & beitreten"
                       )}
                     </button>
-                    {rideGroupId && user && (
-                      <PaymentButton
-                        rideGroupId={rideGroupId}
-                        estimatedAmountCents={estimatedPerPersonCents}
-                        disabled={joinRide.isPending}
-                      />
-                    )}
                   </div>
                 )}
 
                 {userAlreadyJoined && (
-                  <div className="space-y-3">
-                    <p className="text-center text-sm font-medium text-primary">
-                      ✓ Du bist bereits eingetragen
-                    </p>
-                    {rideGroupId && (
-                      <GroupChat
-                        rideGroupId={rideGroupId}
-                        routeName={`${route.from} → ${route.to}`}
-                      />
-                    )}
-                  </div>
+                  <UserJoinedSection
+                    rideGroupId={rideGroupId}
+                    routeFrom={route.from}
+                    routeTo={route.to}
+                    userIsInitiator={userIsInitiator}
+                    estimatedPerPersonCents={estimatedPerPersonCents}
+                    userId={user?.id}
+                  />
                 )}
 
                 {/* Initiator can finalize the ride */}
