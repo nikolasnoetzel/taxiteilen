@@ -12,6 +12,7 @@ import {
   CheckCircle,
   Search,
   Loader2,
+  Timer,
 } from "lucide-react";
 import { ROUTES, getCostPerPerson } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
