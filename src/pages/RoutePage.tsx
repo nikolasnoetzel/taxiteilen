@@ -236,8 +236,10 @@ const RoutePage = () => {
 
   // Exclude current user from display count
   const otherRequests = rideRequests.filter((r) => r.user_id !== user?.id);
-  const userAlreadyJoined = rideRequests.some((r) => r.user_id === user?.id);
-  const userIsInitiator = rideRequests.some((r) => r.user_id === user?.id && r.is_initiator);
+  const userRequest = rideRequests.find((r) => r.user_id === user?.id);
+  const userAlreadyJoined = !!userRequest;
+  const userIsInitiator = !!userRequest?.is_initiator;
+  const userNumPersons = userRequest?.num_persons || 1;
   const totalPersons = rideRequests.reduce((sum, r) => sum + (r.num_persons || 1), 0) + (userAlreadyJoined ? 0 : numPersons);
   const estimatedTotal = (route.estimatedPrice.min + route.estimatedPrice.max) / 2;
   const rideGroupId = rideRequests.length > 0 ? rideRequests[0].ride_group_id : null;
@@ -486,6 +488,7 @@ const RoutePage = () => {
                     routeTo={route.to}
                     userIsInitiator={userIsInitiator}
                     estimatedPerPersonCents={estimatedPerPersonCents}
+                    userNumPersons={userNumPersons}
                     userId={user?.id}
                   />
                 )}
