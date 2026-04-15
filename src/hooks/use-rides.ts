@@ -66,7 +66,7 @@ export function useRideRequests(routeId: string | undefined, estimatedArrival: s
         .map((r) => ({ ...r, profile: { full_name: profileMap.get(r.user_id) ?? null } }))
         .filter((r) => {
           const [rh, rm] = r.estimated_arrival.split(":").map(Number);
-          return Math.abs(rh * 60 + rm - targetMin) <= 60;
+          return Math.abs(rh * 60 + rm - targetMin) <= 120;
         });
     },
   });
