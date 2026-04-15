@@ -110,7 +110,6 @@ export function useJoinRide(routeId: string | undefined) {
       }
 
       // Find an open group for this route TODAY, or create one
-      const today = new Date().toISOString().split("T")[0];
       let groupId: string;
       const { data: openGroup } = await supabase
         .from("ride_groups")
