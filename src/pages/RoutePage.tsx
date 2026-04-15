@@ -265,7 +265,15 @@ const RoutePage = () => {
 
   const ridersRef = useRef<HTMLDivElement>(null);
 
-  const isToAirport = route ? route.toShort === route.airportCode : false;
+  // Detect direction: is origin or destination an airport?
+  const fromIsAirport = !!GERMAN_AIRPORTS.find(
+    (a) => route?.from?.includes(a.iata) || route?.from?.toLowerCase().includes(a.name.toLowerCase())
+  );
+  const toIsAirport = !!GERMAN_AIRPORTS.find(
+    (a) => route?.to?.includes(a.iata) || route?.to?.toLowerCase().includes(a.name.toLowerCase())
+  );
+  const isToAirport = toIsAirport && !fromIsAirport;
+  const isFromAirport = fromIsAirport && !toIsAirport;
 
   const { data: flights = [], isLoading: loadingFlights } = useFlights(route?.airportCode);
 
