@@ -155,3 +155,31 @@ export function useJoinRide(routeId: string | undefined) {
     },
   });
 }
+
+export function useLeaveRide() {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const { toast } = useToast();
+
+  return useMutation({
+    mutationFn: async (rideRequestId: string) => {
+      if (!user) throw new Error("Nicht eingeloggt");
+
+      const { error } = await supabase
+        .from("ride_requests")
+        .delete()
+        .eq("id", rideRequestId)
+        .eq("user_id", user.id);
+
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["ride-requests"] });
+      queryClient.invalidateQueries({ queryKey: ["my-rides"] });
+      toast({ title: "Ausgetragen", description: "Du bist nicht mehr für diese Fahrt eingetragen." });
+    },
+    onError: (err: Error) => {
+      toast({ title: "Fehler", description: err.message, variant: "destructive" });
+    },
+  });
+}
