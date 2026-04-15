@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import { MapPin, ArrowDownUp, CalendarIcon, Clock, Search } from "lucide-react";
+import { MapPin, Plane, ArrowDownUp, CalendarIcon, Clock, Search } from "lucide-react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { searchAirports, type AirportEntry } from "@/lib/german-airports";
 
 type NominatimResult = {
   place_id: number;
@@ -15,6 +16,10 @@ type NominatimResult = {
   lat: string;
   lon: string;
 };
+
+type AutocompleteItem =
+  | { type: "airport"; data: AirportEntry }
+  | { type: "place"; data: NominatimResult };
 
 function useLocationAutocomplete() {
   const [query, setQuery] = useState("");
