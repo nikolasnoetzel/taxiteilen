@@ -54,8 +54,7 @@ serve(async (req) => {
     if (!rideGroup) throw new Error("Ride group not found");
 
     // Calculate amount server-side from route price and total persons
-    const routePrice = ROUTE_PRICES[rideGroup.route_id];
-    if (!routePrice) throw new Error("Unknown route");
+    const routePrice = ROUTE_PRICES[rideGroup.route_id] || DEFAULT_ROUTE_PRICE;
     const estimatedTotal = (routePrice.min + routePrice.max) / 2;
 
     // Count total persons in the group (including this rider)
