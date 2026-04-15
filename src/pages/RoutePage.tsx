@@ -13,10 +13,11 @@ import {
   Search,
   Loader2,
   Timer,
+  LogOut,
 } from "lucide-react";
 import { ROUTES, getCostPerPerson } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRideRequests, useJoinRide } from "@/hooks/use-rides";
+import { useRideRequests, useJoinRide, useLeaveRide } from "@/hooks/use-rides";
 import { useFlights } from "@/hooks/use-flights";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
