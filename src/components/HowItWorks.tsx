@@ -1,11 +1,11 @@
 import { motion } from "framer-motion";
-import { Search, Users, CreditCard, Car } from "lucide-react";
+import { Clock, Users, CreditCard, Car } from "lucide-react";
 
 const steps = [
   {
-    icon: Search,
-    title: "Flugnummer eingeben",
-    description: "Trage deine Flugnummer ein — das System erkennt automatisch Ankunftszeit und Verspätungen.",
+    icon: Clock,
+    title: "Wunschzeit angeben",
+    description: "Wähle Datum und Uhrzeit — wann möchtest du ankommen oder losfahren? Optional: Flug verknüpfen für Verspätungs-Alerts.",
   },
   {
     icon: Users,
