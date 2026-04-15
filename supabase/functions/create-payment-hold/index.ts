@@ -8,6 +8,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Route price data (must match frontend ROUTES)
+const ROUTE_PRICES: Record<string, { min: number; max: number }> = {
+  "ham-kiel": { min: 100, max: 150 },
+  "kiel-ham": { min: 100, max: 150 },
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -24,8 +30,9 @@ serve(async (req) => {
     const { data: { user } } = await supabaseClient.auth.getUser(token);
     if (!user?.email) throw new Error("Not authenticated");
 
-    const { ride_group_id, amount_cents } = await req.json();
-    if (!ride_group_id || !amount_cents) throw new Error("Missing ride_group_id or amount_cents");
+    const { ride_group_id, num_persons } = await req.json();
+    if (!ride_group_id) throw new Error("Missing ride_group_id");
+    const riderPersons = Math.min(Math.max(num_persons || 1, 1), 4);
 
     const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
       apiVersion: "2025-08-27.basil",
@@ -35,6 +42,33 @@ serve(async (req) => {
       Deno.env.get("SUPABASE_URL") ?? "",
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
+
+    // Get ride group info (route_id, created_by)
+    const { data: rideGroup } = await supabaseAdmin
+      .from("ride_groups")
+      .select("created_by, route_id")
+      .eq("id", ride_group_id)
+      .single();
+
+    if (!rideGroup) throw new Error("Ride group not found");
+
+    // Calculate amount server-side from route price and total persons
+    const routePrice = ROUTE_PRICES[rideGroup.route_id];
+    if (!routePrice) throw new Error("Unknown route");
+    const estimatedTotal = (routePrice.min + routePrice.max) / 2;
+
+    // Count total persons in the group (including this rider)
+    const { data: allRiders } = await supabaseAdmin
+      .from("ride_requests")
+      .select("num_persons")
+      .eq("ride_group_id", ride_group_id);
+
+    const existingPersons = (allRiders || []).reduce((sum: number, r: any) => sum + (r.num_persons || 1), 0);
+    const totalPersons = existingPersons; // rider already inserted their ride_request before paying
+    const serviceFee = estimatedTotal * 0.1;
+    const perPersonCents = Math.ceil(((estimatedTotal + serviceFee) / totalPersons) * 100);
+    const amount_cents = perPersonCents * riderPersons;
+    const platformFeeCents = Math.round(amount_cents * 0.1);
 
     // Get or create Stripe customer
     const { data: profile } = await supabaseAdmin
@@ -56,15 +90,7 @@ serve(async (req) => {
         .eq("user_id", user.id);
     }
 
-    // Get the initiator's Connect account for this ride group
-    const { data: rideGroup } = await supabaseAdmin
-      .from("ride_groups")
-      .select("created_by")
-      .eq("id", ride_group_id)
-      .single();
-
-    if (!rideGroup) throw new Error("Ride group not found");
-
+    // Get the initiator's Connect account
     const { data: initiatorProfile } = await supabaseAdmin
       .from("profiles")
       .select("stripe_connect_account_id")
@@ -75,9 +101,9 @@ serve(async (req) => {
       throw new Error("Initiator has not completed payment onboarding");
     }
 
-    // Create a Checkout session with capture_method: manual for pre-authorization
+    // Create Checkout session with capture_method: manual
     const origin = req.headers.get("origin") || "https://taxiteilen.lovable.app";
-    
+
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: "payment",
@@ -87,7 +113,7 @@ serve(async (req) => {
         transfer_data: {
           destination: initiatorProfile.stripe_connect_account_id,
         },
-        application_fee_amount: Math.round(amount_cents * 0.1), // 10% platform fee
+        application_fee_amount: platformFeeCents,
       },
       line_items: [
         {
@@ -95,7 +121,7 @@ serve(async (req) => {
             currency: "eur",
             product_data: {
               name: "TaxiTeilen – Vorab-Reservierung",
-              description: "Geschätzter Anteil für geteilte Taxifahrt. Der finale Betrag wird nach der Fahrt abgerechnet.",
+              description: `Geschätzter Anteil für ${riderPersons} Person(en). Der finale Betrag wird nach der Fahrt abgerechnet.`,
             },
             unit_amount: amount_cents,
           },
@@ -103,7 +129,7 @@ serve(async (req) => {
         },
       ],
       success_url: `${origin}/payment-success?session_id={CHECKOUT_SESSION_ID}&ride_group_id=${ride_group_id}`,
-      cancel_url: `${origin}/route/${ride_group_id}?payment=canceled`,
+      cancel_url: `${origin}/route/${rideGroup.route_id}?payment=canceled`,
     });
 
     // Store payment record
@@ -113,57 +139,9 @@ serve(async (req) => {
         user_id: user.id,
         stripe_payment_intent_id: session.payment_intent as string,
         amount_authorized: amount_cents,
-        platform_fee: Math.round(amount_cents * 0.1),
+        platform_fee: platformFeeCents,
         status: "pending",
       });
-    }
-
-    // Adjust existing uncaptured PaymentIntents to new per-person amount
-    // Get total persons now (including the new one)
-    const { data: allRiders } = await supabaseAdmin
-      .from("ride_requests")
-      .select("id, num_persons")
-      .eq("ride_group_id", ride_group_id);
-
-    const { data: rideGroupData } = await supabaseAdmin
-      .from("ride_groups")
-      .select("route_id")
-      .eq("id", ride_group_id)
-      .single();
-
-    if (allRiders && allRiders.length > 1 && rideGroupData) {
-      // Recalculate per-person amount based on new rider count (+1 for the joining user)
-      const newTotalRiders = allRiders.length + 1;
-      const newPerPersonCents = amount_cents; // The frontend already sends the recalculated amount
-
-      // Get all existing authorized/pending payments for this group (excluding the new one)
-      const { data: existingPayments } = await supabaseAdmin
-        .from("payments")
-        .select("*")
-        .eq("ride_group_id", ride_group_id)
-        .in("status", ["authorized", "pending"])
-        .neq("user_id", user.id);
-
-      for (const payment of (existingPayments || [])) {
-        try {
-          // Update the PaymentIntent amount (only possible for uncaptured intents)
-          await stripe.paymentIntents.update(payment.stripe_payment_intent_id, {
-            amount: newPerPersonCents,
-            application_fee_amount: Math.round(newPerPersonCents * 0.1),
-          });
-
-          await supabaseAdmin
-            .from("payments")
-            .update({
-              amount_authorized: newPerPersonCents,
-              platform_fee: Math.round(newPerPersonCents * 0.1),
-            })
-            .eq("id", payment.id);
-        } catch (updateErr) {
-          console.error(`Failed to update payment ${payment.id}:`, updateErr);
-          // Non-fatal: the capture step will handle the correct amount
-        }
-      }
     }
 
     return new Response(
