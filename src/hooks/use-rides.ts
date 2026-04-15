@@ -173,6 +173,24 @@ export function useLeaveRide() {
     mutationFn: async (rideRequestId: string) => {
       if (!user) throw new Error("Nicht eingeloggt");
 
+      // Get the ride request to find the group ID
+      const { data: request } = await supabase
+        .from("ride_requests")
+        .select("ride_group_id")
+        .eq("id", rideRequestId)
+        .single();
+
+      // Cancel any payment holds for this user in this group
+      if (request?.ride_group_id) {
+        try {
+          await supabase.functions.invoke("cancel-payment-hold", {
+            body: { ride_group_id: request.ride_group_id },
+          });
+        } catch (err) {
+          console.warn("Could not cancel payment hold:", err);
+        }
+      }
+
       const { error } = await supabase
         .from("ride_requests")
         .delete()
@@ -184,7 +202,7 @@ export function useLeaveRide() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["ride-requests"] });
       queryClient.invalidateQueries({ queryKey: ["my-rides"] });
-      toast({ title: "Ausgetragen", description: "Du bist nicht mehr für diese Fahrt eingetragen." });
+      toast({ title: "Ausgetragen", description: "Du bist nicht mehr für diese Fahrt eingetragen. Deine Reservierung wurde storniert." });
     },
     onError: (err: Error) => {
       toast({ title: "Fehler", description: err.message, variant: "destructive" });
