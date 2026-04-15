@@ -8,11 +8,12 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-// Route price data (must match frontend ROUTES)
+// Route price data (known routes get specific pricing, custom routes use a default)
 const ROUTE_PRICES: Record<string, { min: number; max: number }> = {
   "ham-kiel": { min: 100, max: 150 },
   "kiel-ham": { min: 100, max: 150 },
 };
+const DEFAULT_ROUTE_PRICE = { min: 80, max: 200 };
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -53,8 +54,7 @@ serve(async (req) => {
     if (!rideGroup) throw new Error("Ride group not found");
 
     // Calculate amount server-side from route price and total persons
-    const routePrice = ROUTE_PRICES[rideGroup.route_id];
-    if (!routePrice) throw new Error("Unknown route");
+    const routePrice = ROUTE_PRICES[rideGroup.route_id] || DEFAULT_ROUTE_PRICE;
     const estimatedTotal = (routePrice.min + routePrice.max) / 2;
 
     // Count total persons in the group (including this rider)
