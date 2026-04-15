@@ -79,10 +79,11 @@ export function useJoinRide(routeId: string | undefined) {
 
   return useMutation({
     mutationFn: async (params: {
-      flightNumber: string;
-      scheduledArrival: string;
+      desiredTime: string;
+      flightNumber?: string;
+      scheduledArrival?: string;
       estimatedArrival: string;
-      flightStatus: string;
+      flightStatus?: string;
       numPersons?: number;
     }) => {
       if (!user || !routeId) throw new Error("Nicht eingeloggt");
@@ -136,10 +137,11 @@ export function useJoinRide(routeId: string | undefined) {
         ride_group_id: groupId,
         user_id: user.id,
         route_id: routeId,
-        flight_number: params.flightNumber,
-        scheduled_arrival: params.scheduledArrival,
+        flight_number: params.flightNumber || null,
+        scheduled_arrival: params.scheduledArrival || null,
         estimated_arrival: params.estimatedArrival,
-        flight_status: params.flightStatus,
+        flight_status: params.flightStatus || null,
+        desired_time: params.desiredTime,
         is_initiator: !openGroup,
         num_persons: params.numPersons || 1,
       } as any);
