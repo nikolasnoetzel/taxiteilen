@@ -174,23 +174,31 @@ const RideSearch = () => {
                     <MapPin className="h-4 w-4 shrink-0 text-primary" />
                     <input
                       type="text"
-                      placeholder="Von (z.B. Kiel, Hamburg Flughafen)"
+                      placeholder="Von (z.B. Kiel, HAM, FRA)"
                       className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                       value={from.query}
                       onChange={(e) => from.search(e.target.value)}
-                      onFocus={() => from.results.length > 0 && from.setIsOpen(true)}
+                      onFocus={() => from.items.length > 0 && from.setIsOpen(true)}
                     />
                   </div>
                   {from.isOpen && (
                     <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-lg border border-border bg-popover p-1 shadow-lg">
-                      {from.results.map((r) => (
+                      {from.items.map((item, i) => (
                         <button
-                          key={r.place_id}
+                          key={item.type === "airport" ? `air-${item.data.iata}` : `place-${item.data.place_id}`}
                           className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-popover-foreground hover:bg-accent/10"
-                          onClick={() => from.select(r)}
+                          onClick={() => from.selectItem(item)}
                         >
-                          <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">{r.display_name}</span>
+                          {item.type === "airport" ? (
+                            <Plane className="h-3.5 w-3.5 shrink-0 text-primary" />
+                          ) : (
+                            <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          )}
+                          <span className="truncate">
+                            {item.type === "airport"
+                              ? `${item.data.name} (${item.data.iata})`
+                              : item.data.display_name}
+                          </span>
                         </button>
                       ))}
                     </div>
@@ -203,23 +211,31 @@ const RideSearch = () => {
                     <MapPin className="h-4 w-4 shrink-0 text-destructive" />
                     <input
                       type="text"
-                      placeholder="Nach (z.B. Hamburg Flughafen, Berlin)"
+                      placeholder="Nach (z.B. Hamburg Flughafen, BER)"
                       className="w-full bg-transparent text-sm text-foreground outline-none placeholder:text-muted-foreground"
                       value={to.query}
                       onChange={(e) => to.search(e.target.value)}
-                      onFocus={() => to.results.length > 0 && to.setIsOpen(true)}
+                      onFocus={() => to.items.length > 0 && to.setIsOpen(true)}
                     />
                   </div>
                   {to.isOpen && (
                     <div className="absolute left-0 top-full z-50 mt-1 w-full rounded-lg border border-border bg-popover p-1 shadow-lg">
-                      {to.results.map((r) => (
+                      {to.items.map((item, i) => (
                         <button
-                          key={r.place_id}
+                          key={item.type === "airport" ? `air-${item.data.iata}` : `place-${item.data.place_id}`}
                           className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-left text-sm text-popover-foreground hover:bg-accent/10"
-                          onClick={() => to.select(r)}
+                          onClick={() => to.selectItem(item)}
                         >
-                          <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
-                          <span className="truncate">{r.display_name}</span>
+                          {item.type === "airport" ? (
+                            <Plane className="h-3.5 w-3.5 shrink-0 text-primary" />
+                          ) : (
+                            <MapPin className="h-3.5 w-3.5 shrink-0 text-muted-foreground" />
+                          )}
+                          <span className="truncate">
+                            {item.type === "airport"
+                              ? `${item.data.name} (${item.data.iata})`
+                              : item.data.display_name}
+                          </span>
                         </button>
                       ))}
                     </div>
