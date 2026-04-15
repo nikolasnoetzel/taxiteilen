@@ -182,7 +182,8 @@ function RideCard({ ride }: { ride: any }) {
             {route ? `${route.from} → ${route.to}` : ride.route_id}
           </p>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Flug {ride.flight_number} · {ride.estimated_arrival} Uhr
+            {ride.estimated_arrival} Uhr
+            {ride.flight_number && ` · Flug ${ride.flight_number}`}
             {ride.num_persons > 1 && ` · ${ride.num_persons} Personen`}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">

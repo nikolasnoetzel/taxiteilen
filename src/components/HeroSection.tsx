@@ -27,7 +27,7 @@ const HeroSection = () => {
           </h1>
 
           <p className="mx-auto mb-10 max-w-2xl text-lg text-secondary-foreground/70 md:text-xl">
-            Sieh wer zu einer ähnlichen Uhrzeit ankommt und teile dir ein Taxi vom Flughafen — fair aufgeteilt, einfach organisiert.
+            Wähle deine Wunschzeit und finde Mitfahrer für ein geteiltes Taxi — fair aufgeteilt, einfach organisiert.
           </p>
 
           <div className="mx-auto flex max-w-md flex-col gap-4 sm:flex-row sm:justify-center">
@@ -57,7 +57,7 @@ const HeroSection = () => {
           {[
             { icon: Users, label: "Bis zu 4 teilen", value: "75% sparen" },
             { icon: Car, label: "Taxi ab", value: "25 €/Person" },
-            { icon: Plane, label: "Live Flugdaten", value: "Automatisch" },
+            { icon: Plane, label: "Verspätungs-Alerts", value: "Optional" },
           ].map((stat, i) => (
             <div key={i} className="text-center">
               <stat.icon className="mx-auto mb-2 h-6 w-6 text-primary" />
