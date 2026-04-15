@@ -3,7 +3,7 @@ import { Car, Users, Plane } from "lucide-react";
 
 const HeroSection = () => {
   return (
-    <section className="taxi-gradient-hero relative overflow-hidden px-4 py-16 pb-24 md:py-24">
+    <section className="taxi-gradient-hero relative overflow-hidden px-4 pb-28 pt-16 md:pb-32 md:pt-24">
       {/* Decorative elements */}
       <div className="absolute inset-0 opacity-10">
         <div className="absolute right-[-10%] top-[-20%] h-[500px] w-[500px] rounded-full bg-primary blur-[120px]" />
