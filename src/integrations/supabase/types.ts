@@ -261,41 +261,44 @@ export type Database = {
       ride_requests: {
         Row: {
           created_at: string
+          desired_time: string | null
           estimated_arrival: string
-          flight_number: string
-          flight_status: string
+          flight_number: string | null
+          flight_status: string | null
           id: string
           is_initiator: boolean
           num_persons: number
           ride_group_id: string
           route_id: string
-          scheduled_arrival: string
+          scheduled_arrival: string | null
           user_id: string
         }
         Insert: {
           created_at?: string
+          desired_time?: string | null
           estimated_arrival: string
-          flight_number: string
-          flight_status?: string
+          flight_number?: string | null
+          flight_status?: string | null
           id?: string
           is_initiator?: boolean
           num_persons?: number
           ride_group_id: string
           route_id: string
-          scheduled_arrival: string
+          scheduled_arrival?: string | null
           user_id: string
         }
         Update: {
           created_at?: string
+          desired_time?: string | null
           estimated_arrival?: string
-          flight_number?: string
-          flight_status?: string
+          flight_number?: string | null
+          flight_status?: string | null
           id?: string
           is_initiator?: boolean
           num_persons?: number
           ride_group_id?: string
           route_id?: string
-          scheduled_arrival?: string
+          scheduled_arrival?: string | null
           user_id?: string
         }
         Relationships: [
