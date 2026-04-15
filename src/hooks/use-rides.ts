@@ -19,18 +19,31 @@ export type RideRequestRow = {
 };
 
 export function useRideRequests(routeId: string | undefined, estimatedArrival: string | null) {
+  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+
   return useQuery({
-    queryKey: ["ride-requests", routeId, estimatedArrival],
+    queryKey: ["ride-requests", routeId, estimatedArrival, today],
     enabled: !!routeId && !!estimatedArrival,
     queryFn: async () => {
       if (!routeId || !estimatedArrival) return [];
 
-      // Get all ride requests for this route
-      // No FK to profiles, so we fetch requests then profiles separately
+      // Only get ride requests for TODAY's open groups on this route
+      const { data: todayGroups } = await supabase
+        .from("ride_groups")
+        .select("id")
+        .eq("route_id", routeId)
+        .eq("status", "open")
+        .eq("ride_date", today);
+
+      if (!todayGroups || todayGroups.length === 0) return [];
+
+      const groupIds = todayGroups.map((g) => g.id);
+
       const { data, error } = await supabase
         .from("ride_requests")
         .select("*")
-        .eq("route_id", routeId);
+        .eq("route_id", routeId)
+        .in("ride_group_id", groupIds);
 
       if (error) throw error;
       if (!data || data.length === 0) return [];
@@ -74,7 +87,8 @@ export function useJoinRide(routeId: string | undefined) {
     }) => {
       if (!user || !routeId) throw new Error("Nicht eingeloggt");
 
-      // Check if user already has a request for this route in an OPEN group
+      // Check if user already has a request for this route in an OPEN group TODAY
+      const today = new Date().toISOString().split("T")[0];
       const { data: existing } = await supabase
         .from("ride_requests")
         .select("id, ride_group_id")
@@ -82,26 +96,28 @@ export function useJoinRide(routeId: string | undefined) {
         .eq("route_id", routeId);
 
       if (existing && existing.length > 0) {
-        // Check if any of these are in an open ride group
         const groupIds = [...new Set(existing.map((r) => r.ride_group_id))];
         const { data: openGroups } = await supabase
           .from("ride_groups")
           .select("id")
           .in("id", groupIds)
-          .eq("status", "open");
+          .eq("status", "open")
+          .eq("ride_date", today);
 
         if (openGroups && openGroups.length > 0) {
           throw new Error("Du bist bereits für diese Route eingetragen.");
         }
       }
 
-      // Find an open group for this route, or create one
+      // Find an open group for this route TODAY, or create one
+      const today = new Date().toISOString().split("T")[0];
       let groupId: string;
       const { data: openGroup } = await supabase
         .from("ride_groups")
         .select("id")
         .eq("route_id", routeId)
         .eq("status", "open")
+        .eq("ride_date", today)
         .limit(1)
         .maybeSingle();
 
@@ -110,7 +126,7 @@ export function useJoinRide(routeId: string | undefined) {
       } else {
         const { data: newGroup, error: gErr } = await supabase
           .from("ride_groups")
-          .insert({ route_id: routeId, created_by: user.id })
+          .insert({ route_id: routeId, created_by: user.id, ride_date: today } as any)
           .select("id")
           .single();
         if (gErr) throw gErr;
