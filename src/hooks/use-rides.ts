@@ -124,6 +124,12 @@ export function useJoinRide(routeId: string | undefined) {
       if (openGroup) {
         groupId = openGroup.id;
       } else {
+        // Creating a new group = becoming initiator → check Stripe Connect
+        const { data: connectStatus, error: connectErr } = await supabase.functions.invoke("stripe-connect-status");
+        if (connectErr || !connectStatus?.onboarded) {
+          throw new Error("Um als Initiator eine Fahrt zu erstellen, musst du zuerst den Zahlungsempfang einrichten. Gehe dazu auf dein Dashboard → Zahlungsempfang einrichten.");
+        }
+
         const { data: newGroup, error: gErr } = await supabase
           .from("ride_groups")
           .insert({ route_id: routeId, created_by: user.id, ride_date: today } as any)

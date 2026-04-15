@@ -52,12 +52,35 @@ serve(async (req) => {
       }
 
       case "payment_intent.canceled": {
-        const paymentIntent = event.data.object as Stripe.PaymentIntent;
+        const canceledIntent = event.data.object as Stripe.PaymentIntent;
         await supabaseAdmin
           .from("payments")
           .update({ status: "canceled" })
-          .eq("stripe_payment_intent_id", paymentIntent.id);
-        console.log(`Payment canceled: ${paymentIntent.id}`);
+          .eq("stripe_payment_intent_id", canceledIntent.id);
+        console.log(`Payment canceled: ${canceledIntent.id}`);
+        break;
+      }
+
+      case "payment_intent.payment_failed": {
+        const failedIntent = event.data.object as Stripe.PaymentIntent;
+        await supabaseAdmin
+          .from("payments")
+          .update({ status: "failed" })
+          .eq("stripe_payment_intent_id", failedIntent.id);
+        console.log(`Payment failed: ${failedIntent.id}`);
+        break;
+      }
+
+      case "account.updated": {
+        const account = event.data.object as Stripe.Account;
+        const isComplete = account.details_submitted && account.charges_enabled;
+        if (isComplete) {
+          await supabaseAdmin
+            .from("profiles")
+            .update({ stripe_connect_onboarding_complete: true })
+            .eq("stripe_connect_account_id", account.id);
+          console.log(`Connect account onboarded: ${account.id}`);
+        }
         break;
       }
 
