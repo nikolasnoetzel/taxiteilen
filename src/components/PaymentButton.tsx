@@ -7,10 +7,11 @@ import { useToast } from "@/hooks/use-toast";
 type PaymentButtonProps = {
   rideGroupId: string;
   estimatedAmountCents: number;
+  numPersons: number;
   disabled?: boolean;
 };
 
-const PaymentButton = ({ rideGroupId, estimatedAmountCents, disabled }: PaymentButtonProps) => {
+const PaymentButton = ({ rideGroupId, estimatedAmountCents, numPersons, disabled }: PaymentButtonProps) => {
   const { user } = useAuth();
   const { toast } = useToast();
   const [loading, setLoading] = useState(false);
@@ -20,7 +21,7 @@ const PaymentButton = ({ rideGroupId, estimatedAmountCents, disabled }: PaymentB
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("create-payment-hold", {
-        body: { ride_group_id: rideGroupId, amount_cents: estimatedAmountCents },
+        body: { ride_group_id: rideGroupId, num_persons: numPersons },
       });
       if (error) throw error;
       if (data?.url) {

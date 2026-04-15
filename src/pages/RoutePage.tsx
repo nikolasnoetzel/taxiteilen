@@ -13,10 +13,11 @@ import {
   Search,
   Loader2,
   Timer,
+  LogOut,
 } from "lucide-react";
 import { ROUTES, getCostPerPerson } from "@/lib/data";
 import { useAuth } from "@/contexts/AuthContext";
-import { useRideRequests, useJoinRide } from "@/hooks/use-rides";
+import { useRideRequests, useJoinRide, useLeaveRide } from "@/hooks/use-rides";
 import { useFlights } from "@/hooks/use-flights";
 import { supabase } from "@/integrations/supabase/client";
 import Navbar from "@/components/Navbar";
@@ -74,19 +75,25 @@ const PaymentExpiryBadge = ({ createdAt }: { createdAt: string }) => {
 
 const UserJoinedSection = ({
   rideGroupId,
+  rideRequestId,
   routeFrom,
   routeTo,
   userIsInitiator,
   estimatedPerPersonCents,
+  userNumPersons,
   userId,
 }: {
   rideGroupId: string | null;
+  rideRequestId: string | null;
   routeFrom: string;
   routeTo: string;
   userIsInitiator: boolean;
   estimatedPerPersonCents: number;
+  userNumPersons: number;
   userId?: string;
 }) => {
+  const leaveRide = useLeaveRide();
+
   const { data: existingPayment, isLoading: loadingPayment } = useQuery({
     queryKey: ["user-payment", rideGroupId, userId],
     queryFn: async () => {
@@ -102,6 +109,8 @@ const UserJoinedSection = ({
     },
     enabled: !!rideGroupId && !!userId && !userIsInitiator,
   });
+
+  const hasActivePayment = existingPayment && ["authorized", "pending", "captured"].includes(existingPayment.status);
 
   const paymentStatusLabel: Record<string, string> = {
     pending: "Zahlung wird verarbeitet…",
@@ -134,6 +143,7 @@ const UserJoinedSection = ({
           <PaymentButton
             rideGroupId={rideGroupId}
             estimatedAmountCents={estimatedPerPersonCents}
+            numPersons={userNumPersons}
           />
         )
       )}
@@ -143,6 +153,22 @@ const UserJoinedSection = ({
           rideGroupId={rideGroupId}
           routeName={`${routeFrom} → ${routeTo}`}
         />
+      )}
+
+      {/* Leave ride button — only if no active payment */}
+      {rideRequestId && !hasActivePayment && (
+        <button
+          onClick={() => {
+            if (confirm("Möchtest du dich wirklich austragen?")) {
+              leaveRide.mutate(rideRequestId);
+            }
+          }}
+          disabled={leaveRide.isPending}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+        >
+          <LogOut className="h-4 w-4" />
+          {leaveRide.isPending ? "Wird ausgetragen…" : "Austragen"}
+        </button>
       )}
     </div>
   );
@@ -173,6 +199,7 @@ const RoutePage = () => {
   );
 
   const joinRide = useJoinRide(routeId);
+  const leaveRide = useLeaveRide();
 
   // Auto-scroll to riders section when flight is selected
   useEffect(() => {
@@ -233,8 +260,10 @@ const RoutePage = () => {
 
   // Exclude current user from display count
   const otherRequests = rideRequests.filter((r) => r.user_id !== user?.id);
-  const userAlreadyJoined = rideRequests.some((r) => r.user_id === user?.id);
-  const userIsInitiator = rideRequests.some((r) => r.user_id === user?.id && r.is_initiator);
+  const userRequest = rideRequests.find((r) => r.user_id === user?.id);
+  const userAlreadyJoined = !!userRequest;
+  const userIsInitiator = !!userRequest?.is_initiator;
+  const userNumPersons = userRequest?.num_persons || 1;
   const totalPersons = rideRequests.reduce((sum, r) => sum + (r.num_persons || 1), 0) + (userAlreadyJoined ? 0 : numPersons);
   const estimatedTotal = (route.estimatedPrice.min + route.estimatedPrice.max) / 2;
   const rideGroupId = rideRequests.length > 0 ? rideRequests[0].ride_group_id : null;
@@ -479,10 +508,12 @@ const RoutePage = () => {
                 {userAlreadyJoined && (
                   <UserJoinedSection
                     rideGroupId={rideGroupId}
+                    rideRequestId={userRequest?.id ?? null}
                     routeFrom={route.from}
                     routeTo={route.to}
                     userIsInitiator={userIsInitiator}
                     estimatedPerPersonCents={estimatedPerPersonCents}
+                    userNumPersons={userNumPersons}
                     userId={user?.id}
                   />
                 )}
@@ -507,6 +538,20 @@ const RoutePage = () => {
                     <p className="mt-3 text-sm font-medium text-primary">
                       ✓ Du bist bereits eingetragen
                     </p>
+                    {userRequest && (
+                      <button
+                        onClick={() => {
+                          if (confirm("Möchtest du dich wirklich austragen?")) {
+                            leaveRide.mutate(userRequest.id);
+                          }
+                        }}
+                        disabled={leaveRide.isPending}
+                        className="mt-3 inline-flex items-center gap-1.5 text-sm text-destructive hover:underline disabled:opacity-50"
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                        {leaveRide.isPending ? "Wird ausgetragen…" : "Austragen"}
+                      </button>
+                    )}
                   </>
                 ) : (
                   <>
