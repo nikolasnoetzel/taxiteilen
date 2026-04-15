@@ -78,6 +78,7 @@ const UserJoinedSection = ({
   routeTo,
   userIsInitiator,
   estimatedPerPersonCents,
+  userNumPersons,
   userId,
 }: {
   rideGroupId: string | null;
@@ -85,6 +86,7 @@ const UserJoinedSection = ({
   routeTo: string;
   userIsInitiator: boolean;
   estimatedPerPersonCents: number;
+  userNumPersons: number;
   userId?: string;
 }) => {
   const { data: existingPayment, isLoading: loadingPayment } = useQuery({
@@ -134,6 +136,7 @@ const UserJoinedSection = ({
           <PaymentButton
             rideGroupId={rideGroupId}
             estimatedAmountCents={estimatedPerPersonCents}
+            numPersons={userNumPersons}
           />
         )
       )}
