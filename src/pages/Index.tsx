@@ -1,5 +1,6 @@
 import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
+import RideSearch from "@/components/RideSearch";
 import HowItWorks from "@/components/HowItWorks";
 import RouteSelector from "@/components/RouteSelector";
 import CostCalculator from "@/components/CostCalculator";
@@ -10,6 +11,7 @@ const Index = () => {
     <div className="flex min-h-screen flex-col bg-background">
       <Navbar />
       <HeroSection />
+      <RideSearch />
       <RouteSelector />
       <HowItWorks />
       <CostCalculator />

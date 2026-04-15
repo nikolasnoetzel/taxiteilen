@@ -15,6 +15,7 @@ import StripeOnboarding from "./pages/StripeOnboarding.tsx";
 import PaymentSuccess from "./pages/PaymentSuccess.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import NotFound from "./pages/NotFound.tsx";
+import SearchResults from "./pages/SearchResults.tsx";
 
 const queryClient = new QueryClient();
 
@@ -27,6 +28,7 @@ const App = () => (
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
+            <Route path="/search" element={<SearchResults />} />
             <Route path="/route/:routeId" element={<RoutePage />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/datenschutz" element={<Datenschutz />} />
