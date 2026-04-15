@@ -19,7 +19,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ROUTES, getCostPerPerson } from "@/lib/data";
+import { ROUTES, getCostPerPerson, type Route } from "@/lib/data";
+import { GERMAN_AIRPORTS } from "@/lib/german-airports";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRideRequests, useJoinRide, useLeaveRide } from "@/hooks/use-rides";
 import { useFlights } from "@/hooks/use-flights";
