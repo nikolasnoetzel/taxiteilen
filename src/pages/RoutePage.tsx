@@ -1,6 +1,6 @@
-import { useParams, Link, useNavigate } from "react-router-dom";
+import { useParams, Link, useNavigate, useSearchParams } from "react-router-dom";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { format } from "date-fns";
 import { de } from "date-fns/locale";
 import { motion } from "framer-motion";
@@ -19,7 +19,8 @@ import {
   ChevronDown,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ROUTES, getCostPerPerson } from "@/lib/data";
+import { ROUTES, getCostPerPerson, type Route } from "@/lib/data";
+import { GERMAN_AIRPORTS } from "@/lib/german-airports";
 import { useAuth } from "@/contexts/AuthContext";
 import { useRideRequests, useJoinRide, useLeaveRide } from "@/hooks/use-rides";
 import { useFlights } from "@/hooks/use-flights";
@@ -194,14 +195,67 @@ const UserJoinedSection = ({
 };
 
 const RoutePage = () => {
+  const [searchParams] = useSearchParams();
   const { routeId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const route = ROUTES.find((r) => r.id === routeId);
 
-  // Primary inputs: date + time
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedTime, setSelectedTime] = useState<string>("");
+  // Build route: either from static list or from search params (custom)
+  const route: Route | undefined = useMemo(() => {
+    const staticRoute = ROUTES.find((r) => r.id === routeId);
+    if (staticRoute) return staticRoute;
+
+    if (routeId === "custom") {
+      const from = searchParams.get("from") || "";
+      const to = searchParams.get("to") || "";
+      if (!from || !to) return undefined;
+
+      // Detect airport code from location names
+      const detectAirport = (loc: string) =>
+        GERMAN_AIRPORTS.find(
+          (a) => loc.includes(a.iata) || loc.toLowerCase().includes(a.name.toLowerCase())
+        );
+
+      const fromAirport = detectAirport(from);
+      const toAirport = detectAirport(to);
+      const airport = fromAirport || toAirport;
+
+      // Generate a stable route_id from the from/to pair
+      const customRouteId = `custom-${btoa(unescape(encodeURIComponent(`${from}|${to}`))).replace(/[^a-zA-Z0-9]/g, "").slice(0, 32)}`;
+
+      return {
+        id: customRouteId,
+        from,
+        fromShort: fromAirport?.iata || from.split(",")[0].trim().slice(0, 10),
+        to,
+        toShort: toAirport?.iata || to.split(",")[0].trim().slice(0, 10),
+        airport: airport?.name || "",
+        airportCode: airport?.iata || "",
+        estimatedPrice: { min: 50, max: 200 },
+        estimatedDuration: "Variabel",
+        taxiCompanies: [],
+      } satisfies Route;
+    }
+
+    return undefined;
+  }, [routeId, searchParams]);
+
+  const effectiveRouteId = route?.id;
+
+  // Primary inputs: date + time (initialize from search params for custom routes)
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const dateParam = searchParams.get("date");
+    if (dateParam) {
+      const parsed = new Date(dateParam + "T00:00:00");
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    return new Date();
+  });
+  const [selectedTime, setSelectedTime] = useState<string>(() => {
+    const timeParam = searchParams.get("time");
+    if (timeParam && /^\d{2}:\d{2}$/.test(timeParam)) return timeParam;
+    return "";
+  });
   const [numPersons, setNumPersons] = useState(1);
 
   // Optional: flight selection for delay alerts
@@ -223,11 +277,11 @@ const RoutePage = () => {
   const matchTime = selectedFlightData?.estimatedArrival ?? selectedTime;
 
   const { data: rideRequests = [], isLoading: loadingRequests } = useRideRequests(
-    routeId,
+    effectiveRouteId,
     matchTime || null
   );
 
-  const joinRide = useJoinRide(routeId);
+  const joinRide = useJoinRide(effectiveRouteId);
   const leaveRide = useLeaveRide();
 
   // Set default time: round up to next 15 min
@@ -254,15 +308,15 @@ const RoutePage = () => {
   // Realtime subscription
   const queryClient = useQueryClient();
   useEffect(() => {
-    if (!routeId) return;
+    if (!effectiveRouteId) return;
     const channel = supabase
-      .channel(`ride-requests-${routeId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ride_requests", filter: `route_id=eq.${routeId}` }, () => {
+      .channel(`ride-requests-${effectiveRouteId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ride_requests", filter: `route_id=eq.${effectiveRouteId}` }, () => {
         queryClient.invalidateQueries({ queryKey: ["ride-requests"] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [routeId, queryClient]);
+  }, [effectiveRouteId, queryClient]);
 
   if (!route) {
     return (
