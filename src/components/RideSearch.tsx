@@ -23,7 +23,7 @@ type AutocompleteItem =
 
 function useLocationAutocomplete() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<NominatimResult[]>([]);
+  const [items, setItems] = useState<AutocompleteItem[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [isOpen, setIsOpen] = useState(false);
   const [selectedLabel, setSelectedLabel] = useState("");
@@ -33,10 +33,22 @@ function useLocationAutocomplete() {
     setQuery(q);
     setSelectedLabel("");
     if (q.length < 2) {
-      setResults([]);
+      setItems([]);
       setIsOpen(false);
       return;
     }
+
+    // Immediately show airport matches
+    const airportMatches: AutocompleteItem[] = searchAirports(q).map((a) => ({
+      type: "airport",
+      data: a,
+    }));
+
+    if (airportMatches.length > 0) {
+      setItems(airportMatches);
+      setIsOpen(true);
+    }
+
     clearTimeout(timerRef.current);
     timerRef.current = setTimeout(async () => {
       setIsLoading(true);
@@ -46,34 +58,45 @@ function useLocationAutocomplete() {
           { headers: { "Accept-Language": "de" } }
         );
         const data: NominatimResult[] = await res.json();
-        setResults(data);
-        setIsOpen(data.length > 0);
+        const placeItems: AutocompleteItem[] = data.map((d) => ({
+          type: "place",
+          data: d,
+        }));
+        // Airports first, then places (deduplicated)
+        const combined = [...airportMatches, ...placeItems];
+        setItems(combined.slice(0, 7));
+        setIsOpen(combined.length > 0);
       } catch {
-        setResults([]);
+        // Keep airport results if fetch fails
+        if (airportMatches.length === 0) setItems([]);
       } finally {
         setIsLoading(false);
       }
     }, 300);
   }, []);
 
-  const select = useCallback((result: NominatimResult) => {
-    // Shorten display_name to first 2-3 parts
-    const parts = result.display_name.split(", ");
-    const short = parts.slice(0, 2).join(", ");
-    setSelectedLabel(short);
-    setQuery(short);
+  const selectItem = useCallback((item: AutocompleteItem) => {
+    let label: string;
+    if (item.type === "airport") {
+      label = `${item.data.name} (${item.data.iata})`;
+    } else {
+      const parts = item.data.display_name.split(", ");
+      label = parts.slice(0, 2).join(", ");
+    }
+    setSelectedLabel(label);
+    setQuery(label);
     setIsOpen(false);
-    return { label: short, lat: result.lat, lon: result.lon };
+    return label;
   }, []);
 
   const clear = useCallback(() => {
     setQuery("");
     setSelectedLabel("");
-    setResults([]);
+    setItems([]);
     setIsOpen(false);
   }, []);
 
-  return { query, results, isLoading, isOpen, setIsOpen, search, select, clear, selectedLabel };
+  return { query, items, isLoading, isOpen, setIsOpen, search, selectItem, clear, selectedLabel };
 }
 
 const TIME_OPTIONS = Array.from({ length: 48 }, (_, i) => {
