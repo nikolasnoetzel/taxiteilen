@@ -199,6 +199,7 @@ const RoutePage = () => {
   );
 
   const joinRide = useJoinRide(routeId);
+  const leaveRide = useLeaveRide();
 
   // Auto-scroll to riders section when flight is selected
   useEffect(() => {
@@ -537,6 +538,20 @@ const RoutePage = () => {
                     <p className="mt-3 text-sm font-medium text-primary">
                       ✓ Du bist bereits eingetragen
                     </p>
+                    {userRequest && (
+                      <button
+                        onClick={() => {
+                          if (confirm("Möchtest du dich wirklich austragen?")) {
+                            leaveRide.mutate(userRequest.id);
+                          }
+                        }}
+                        disabled={leaveRide.isPending}
+                        className="mt-3 inline-flex items-center gap-1.5 text-sm text-destructive hover:underline disabled:opacity-50"
+                      >
+                        <LogOut className="h-3.5 w-3.5" />
+                        {leaveRide.isPending ? "Wird ausgetragen…" : "Austragen"}
+                      </button>
+                    )}
                   </>
                 ) : (
                   <>
