@@ -423,7 +423,7 @@ const RoutePage = () => {
               Mitfahrer in deinem Zeitfenster
             </h2>
             <p className="mb-4 text-sm text-muted-foreground">
-              Personen die ±60 Min. um {matchTime} Uhr {isToAirport ? "losfahren" : "ankommen"} möchten
+              Personen die ±2 Std. um {matchTime} Uhr {isToAirport ? "losfahren" : "ankommen"} möchten
             </p>
 
             {loadingRequests ? (
