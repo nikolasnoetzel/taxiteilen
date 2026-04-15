@@ -240,9 +240,22 @@ const RoutePage = () => {
     return undefined;
   }, [routeId, searchParams]);
 
-  // Primary inputs: date + time
-  const [selectedDate, setSelectedDate] = useState<Date>(new Date());
-  const [selectedTime, setSelectedTime] = useState<string>("");
+  const effectiveRouteId = route?.id;
+
+  // Primary inputs: date + time (initialize from search params for custom routes)
+  const [selectedDate, setSelectedDate] = useState<Date>(() => {
+    const dateParam = searchParams.get("date");
+    if (dateParam) {
+      const parsed = new Date(dateParam + "T00:00:00");
+      if (!isNaN(parsed.getTime())) return parsed;
+    }
+    return new Date();
+  });
+  const [selectedTime, setSelectedTime] = useState<string>(() => {
+    const timeParam = searchParams.get("time");
+    if (timeParam && /^\d{2}:\d{2}$/.test(timeParam)) return timeParam;
+    return "";
+  });
   const [numPersons, setNumPersons] = useState(1);
 
   // Optional: flight selection for delay alerts
@@ -264,11 +277,11 @@ const RoutePage = () => {
   const matchTime = selectedFlightData?.estimatedArrival ?? selectedTime;
 
   const { data: rideRequests = [], isLoading: loadingRequests } = useRideRequests(
-    routeId,
+    effectiveRouteId,
     matchTime || null
   );
 
-  const joinRide = useJoinRide(routeId);
+  const joinRide = useJoinRide(effectiveRouteId);
   const leaveRide = useLeaveRide();
 
   // Set default time: round up to next 15 min
@@ -295,15 +308,15 @@ const RoutePage = () => {
   // Realtime subscription
   const queryClient = useQueryClient();
   useEffect(() => {
-    if (!routeId) return;
+    if (!effectiveRouteId) return;
     const channel = supabase
-      .channel(`ride-requests-${routeId}`)
-      .on("postgres_changes", { event: "*", schema: "public", table: "ride_requests", filter: `route_id=eq.${routeId}` }, () => {
+      .channel(`ride-requests-${effectiveRouteId}`)
+      .on("postgres_changes", { event: "*", schema: "public", table: "ride_requests", filter: `route_id=eq.${effectiveRouteId}` }, () => {
         queryClient.invalidateQueries({ queryKey: ["ride-requests"] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [routeId, queryClient]);
+  }, [effectiveRouteId, queryClient]);
 
   if (!route) {
     return (
