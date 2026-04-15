@@ -195,10 +195,50 @@ const UserJoinedSection = ({
 };
 
 const RoutePage = () => {
+  const [searchParams] = useSearchParams();
   const { routeId } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const route = ROUTES.find((r) => r.id === routeId);
+
+  // Build route: either from static list or from search params (custom)
+  const route: Route | undefined = useMemo(() => {
+    const staticRoute = ROUTES.find((r) => r.id === routeId);
+    if (staticRoute) return staticRoute;
+
+    if (routeId === "custom") {
+      const from = searchParams.get("from") || "";
+      const to = searchParams.get("to") || "";
+      if (!from || !to) return undefined;
+
+      // Detect airport code from location names
+      const detectAirport = (loc: string) =>
+        GERMAN_AIRPORTS.find(
+          (a) => loc.includes(a.iata) || loc.toLowerCase().includes(a.name.toLowerCase())
+        );
+
+      const fromAirport = detectAirport(from);
+      const toAirport = detectAirport(to);
+      const airport = fromAirport || toAirport;
+
+      // Generate a stable route_id from the from/to pair
+      const customRouteId = `custom-${btoa(unescape(encodeURIComponent(`${from}|${to}`))).replace(/[^a-zA-Z0-9]/g, "").slice(0, 32)}`;
+
+      return {
+        id: customRouteId,
+        from,
+        fromShort: fromAirport?.iata || from.split(",")[0].trim().slice(0, 10),
+        to,
+        toShort: toAirport?.iata || to.split(",")[0].trim().slice(0, 10),
+        airport: airport?.name || "",
+        airportCode: airport?.iata || "",
+        estimatedPrice: { min: 50, max: 200 },
+        estimatedDuration: "Variabel",
+        taxiCompanies: [],
+      } satisfies Route;
+    }
+
+    return undefined;
+  }, [routeId, searchParams]);
 
   // Primary inputs: date + time
   const [selectedDate, setSelectedDate] = useState<Date>(new Date());
