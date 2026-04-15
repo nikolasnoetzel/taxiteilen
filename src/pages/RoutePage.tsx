@@ -75,6 +75,7 @@ const PaymentExpiryBadge = ({ createdAt }: { createdAt: string }) => {
 
 const UserJoinedSection = ({
   rideGroupId,
+  rideRequestId,
   routeFrom,
   routeTo,
   userIsInitiator,
@@ -83,6 +84,7 @@ const UserJoinedSection = ({
   userId,
 }: {
   rideGroupId: string | null;
+  rideRequestId: string | null;
   routeFrom: string;
   routeTo: string;
   userIsInitiator: boolean;
@@ -90,6 +92,8 @@ const UserJoinedSection = ({
   userNumPersons: number;
   userId?: string;
 }) => {
+  const leaveRide = useLeaveRide();
+
   const { data: existingPayment, isLoading: loadingPayment } = useQuery({
     queryKey: ["user-payment", rideGroupId, userId],
     queryFn: async () => {
@@ -105,6 +109,8 @@ const UserJoinedSection = ({
     },
     enabled: !!rideGroupId && !!userId && !userIsInitiator,
   });
+
+  const hasActivePayment = existingPayment && ["authorized", "pending", "captured"].includes(existingPayment.status);
 
   const paymentStatusLabel: Record<string, string> = {
     pending: "Zahlung wird verarbeitet…",
@@ -147,6 +153,22 @@ const UserJoinedSection = ({
           rideGroupId={rideGroupId}
           routeName={`${routeFrom} → ${routeTo}`}
         />
+      )}
+
+      {/* Leave ride button — only if no active payment */}
+      {rideRequestId && !hasActivePayment && (
+        <button
+          onClick={() => {
+            if (confirm("Möchtest du dich wirklich austragen?")) {
+              leaveRide.mutate(rideRequestId);
+            }
+          }}
+          disabled={leaveRide.isPending}
+          className="flex w-full items-center justify-center gap-2 rounded-lg border border-destructive/30 py-2.5 text-sm font-medium text-destructive transition-colors hover:bg-destructive/10 disabled:opacity-50"
+        >
+          <LogOut className="h-4 w-4" />
+          {leaveRide.isPending ? "Wird ausgetragen…" : "Austragen"}
+        </button>
       )}
     </div>
   );
