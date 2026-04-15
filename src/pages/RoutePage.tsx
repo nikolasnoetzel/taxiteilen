@@ -507,6 +507,7 @@ const RoutePage = () => {
                 {userAlreadyJoined && (
                   <UserJoinedSection
                     rideGroupId={rideGroupId}
+                    rideRequestId={userRequest?.id ?? null}
                     routeFrom={route.from}
                     routeTo={route.to}
                     userIsInitiator={userIsInitiator}
