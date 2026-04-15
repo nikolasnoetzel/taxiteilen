@@ -265,7 +265,15 @@ const RoutePage = () => {
 
   const ridersRef = useRef<HTMLDivElement>(null);
 
-  const isToAirport = route ? route.toShort === route.airportCode : false;
+  // Detect direction: is origin or destination an airport?
+  const fromIsAirport = !!GERMAN_AIRPORTS.find(
+    (a) => route?.from?.includes(a.iata) || route?.from?.toLowerCase().includes(a.name.toLowerCase())
+  );
+  const toIsAirport = !!GERMAN_AIRPORTS.find(
+    (a) => route?.to?.includes(a.iata) || route?.to?.toLowerCase().includes(a.name.toLowerCase())
+  );
+  const isToAirport = toIsAirport && !fromIsAirport;
+  const isFromAirport = fromIsAirport && !toIsAirport;
 
   const { data: flights = [], isLoading: loadingFlights } = useFlights(route?.airportCode);
 
@@ -339,7 +347,7 @@ const RoutePage = () => {
   const rideGroupId = rideRequests.length > 0 ? rideRequests[0].ride_group_id : null;
   const estimatedPerPersonCents = Math.round(getCostPerPerson(estimatedTotal, totalPersons) * numPersons * 100);
 
-  const timeLabel = isToAirport ? "Abfahrt" : "Ankunft";
+  const timeLabel = isFromAirport ? "Ankunft" : isToAirport ? "Abfahrt" : "Abfahrt";
 
   const handleJoin = () => {
     if (!user) {
@@ -405,7 +413,11 @@ const RoutePage = () => {
         <div className="mb-8">
           <h2 className="mb-4 font-display text-xl font-semibold text-foreground">
             <Clock className="mb-0.5 mr-2 inline-block h-5 w-5 text-primary" />
-            {isToAirport ? "Wann möchtest du losfahren?" : "Wann kommst du an?"}
+            {isFromAirport
+              ? "Wann kommst du an?"
+              : isToAirport
+                ? "Wann musst du da sein?"
+                : "Wann möchtest du losfahren?"}
           </h2>
 
           <div className="grid gap-4 sm:grid-cols-2">
@@ -441,7 +453,7 @@ const RoutePage = () => {
             {/* Time picker */}
             <div>
               <label className="mb-1.5 block text-sm font-medium text-foreground">
-                {isToAirport ? "Gewünschte Abfahrtszeit" : "Ankunftszeit"}
+                {isFromAirport ? "Ankunftszeit" : isToAirport ? "Gewünschte Ankunft am Flughafen" : "Gewünschte Abfahrtszeit"}
               </label>
               <div className="relative">
                 <Clock className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
