@@ -1,98 +1,171 @@
+// Stripe webhook — source of truth for payment state.
+// Register the endpoint for BOTH account and Connect events (docs/stripe-setup.md).
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import Stripe from "https://esm.sh/stripe@18.5.0";
-import { createClient } from "npm:@supabase/supabase-js@2.57.2";
+import { adminClient } from "../_shared/http.ts";
+import { loadGroup, loadProfiles, firstName } from "../_shared/rides.ts";
+import { enqueueEmail, templates } from "../_shared/emails.ts";
 
 serve(async (req) => {
-  if (req.method !== "POST") {
-    return new Response("Method not allowed", { status: 400 });
-  }
-
   const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
     apiVersion: "2025-08-27.basil",
   });
+  const signingSecret = Deno.env.get("STRIPE_WEBHOOK_SIGNING_SECRET") || "";
 
   const signature = req.headers.get("stripe-signature");
-  if (!signature) {
-    return new Response("Missing stripe-signature header", { status: 400 });
-  }
-
-  const body = await req.text();
+  if (!signature) return new Response("Missing signature", { status: 400 });
 
   let event: Stripe.Event;
   try {
-    event = stripe.webhooks.constructEvent(
-      body,
-      signature,
-      Deno.env.get("STRIPE_WEBHOOK_SIGNING_SECRET") || ""
-    );
+    event = await stripe.webhooks.constructEventAsync(await req.text(), signature, signingSecret);
   } catch (err) {
-    console.error("Webhook signature verification failed:", err.message);
-    return new Response(JSON.stringify({ error: "Invalid signature" }), { status: 400 });
+    console.error("Webhook signature verification failed:", (err as Error).message);
+    return new Response("Invalid signature", { status: 400 });
   }
 
-  const supabaseAdmin = createClient(
-    Deno.env.get("SUPABASE_URL") ?? "",
-    Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
-  );
+  const admin = adminClient();
 
   try {
     switch (event.type) {
+      // ----- rider paid: activate membership, confirm, notify group -----
       case "checkout.session.completed": {
         const session = event.data.object as Stripe.Checkout.Session;
-        const paymentIntentId = session.payment_intent as string;
-        if (paymentIntentId) {
-          await supabaseAdmin
-            .from("payments")
-            .update({ status: "authorized" })
-            .eq("stripe_payment_intent_id", paymentIntentId)
-            .eq("status", "pending");
-          console.log(`Payment authorized: ${paymentIntentId}`);
+        const paymentId = session.metadata?.payment_id;
+        const membershipId = session.metadata?.membership_id;
+        const groupId = session.metadata?.ride_group_id;
+        if (!paymentId || !membershipId || !groupId) break;
+
+        // Resolve the charge id (needed for source_transaction on payout)
+        let chargeId: string | null = null;
+        const piId = session.payment_intent as string | null;
+        if (piId) {
+          const pi = await stripe.paymentIntents.retrieve(piId);
+          chargeId = (pi.latest_charge as string) ?? null;
+        }
+
+        const { data: payment } = await admin
+          .from("payments")
+          .update({
+            status: "paid",
+            stripe_payment_intent_id: piId,
+            stripe_charge_id: chargeId,
+            paid_at: new Date().toISOString(),
+          })
+          .eq("id", paymentId)
+          .in("status", ["requires_payment", "failed"]) // idempotent
+          .select("user_id, amount_cents")
+          .maybeSingle();
+
+        await admin
+          .from("memberships")
+          .update({ status: "active", pending_expires_at: null })
+          .eq("id", membershipId)
+          .eq("status", "pending_payment");
+
+        if (payment) {
+          const { group, emailCtx } = await loadGroup(admin, groupId);
+          const { data: members } = await admin
+            .from("memberships")
+            .select("user_id, num_persons, status, role")
+            .eq("ride_group_id", groupId)
+            .in("status", ["active", "pending_payment"]);
+          const takenSeats = (members ?? []).reduce((sum, m) => sum + m.num_persons, 0);
+          const seatsLeft = Math.max(group.seats_total - takenSeats, 0);
+
+          const userIds = [payment.user_id, ...(members ?? []).map((m) => m.user_id)];
+          const profiles = await loadProfiles(admin, [...new Set(userIds)]);
+
+          const rider = profiles.get(payment.user_id);
+          if (rider?.email) {
+            await enqueueEmail(admin, rider.email,
+              templates.join_confirmed(emailCtx, payment.amount_cents), "join_confirmed");
+          }
+          const others = (members ?? []).filter(
+            (m) => m.user_id !== payment.user_id && m.status === "active");
+          for (const m of others) {
+            const email = profiles.get(m.user_id)?.email;
+            if (email) {
+              await enqueueEmail(admin, email,
+                templates.new_rider(emailCtx, firstName(rider), seatsLeft), "new_rider");
+            }
+          }
         }
         break;
       }
 
-      case "payment_intent.canceled": {
-        const canceledIntent = event.data.object as Stripe.PaymentIntent;
-        await supabaseAdmin
-          .from("payments")
-          .update({ status: "canceled" })
-          .eq("stripe_payment_intent_id", canceledIntent.id);
-        console.log(`Payment canceled: ${canceledIntent.id}`);
+      // ----- checkout abandoned: free the seat -----
+      case "checkout.session.expired": {
+        const session = event.data.object as Stripe.Checkout.Session;
+        const paymentId = session.metadata?.payment_id;
+        const membershipId = session.metadata?.membership_id;
+        if (paymentId) {
+          await admin.from("payments").update({ status: "failed" })
+            .eq("id", paymentId).eq("status", "requires_payment");
+        }
+        if (membershipId) {
+          await admin.from("memberships").update({ status: "expired" })
+            .eq("id", membershipId).eq("status", "pending_payment");
+        }
         break;
       }
 
-      case "payment_intent.payment_failed": {
-        const failedIntent = event.data.object as Stripe.PaymentIntent;
-        await supabaseAdmin
+      // ----- reconcile refunds triggered outside our own flows -----
+      case "charge.refunded": {
+        const charge = event.data.object as Stripe.Charge;
+        await admin
           .from("payments")
-          .update({ status: "failed" })
-          .eq("stripe_payment_intent_id", failedIntent.id);
-        console.log(`Payment failed: ${failedIntent.id}`);
+          .update({ status: "refunded", refunded_at: new Date().toISOString() })
+          .eq("stripe_charge_id", charge.id)
+          .in("status", ["paid", "retained"]);
         break;
       }
 
+      // ----- card chargeback: pause payout via an internal dispute -----
+      case "charge.dispute.created": {
+        const dispute = event.data.object as Stripe.Dispute;
+        const chargeId = dispute.charge as string;
+        const { data: payment } = await admin
+          .from("payments")
+          .select("id, ride_group_id, user_id, status")
+          .eq("stripe_charge_id", chargeId)
+          .maybeSingle();
+        if (payment) {
+          await admin.from("disputes").insert({
+            ride_group_id: payment.ride_group_id,
+            raised_by: payment.user_id,
+            reason: `Stripe chargeback (${dispute.id})`,
+          });
+          if (payment.status === "transferred") {
+            console.error("Chargeback on already-transferred payment — manual transfer reversal needed", {
+              payment: payment.id, stripe_dispute: dispute.id,
+            });
+          }
+        }
+        break;
+      }
+
+      // ----- Connect onboarding progress -----
       case "account.updated": {
         const account = event.data.object as Stripe.Account;
-        const isComplete = account.details_submitted && account.charges_enabled;
-        if (isComplete) {
-          await supabaseAdmin
-            .from("profiles")
-            .update({ stripe_connect_onboarding_complete: true })
-            .eq("stripe_connect_account_id", account.id);
-          console.log(`Connect account onboarded: ${account.id}`);
-        }
+        const complete = Boolean(
+          account.details_submitted && account.charges_enabled && account.payouts_enabled
+        );
+        await admin
+          .from("profiles")
+          .update({ stripe_connect_onboarding_complete: complete })
+          .eq("stripe_connect_account_id", account.id);
         break;
       }
 
       default:
-        console.log(`Unhandled event type: ${event.type}`);
+        break;
     }
   } catch (err) {
-    console.error(`Error processing ${event.type}:`, err);
+    console.error("Webhook handler error:", event.type, (err as Error).message);
+    return new Response("Handler error", { status: 500 }); // Stripe retries
   }
 
   return new Response(JSON.stringify({ received: true }), {
-    status: 200,
     headers: { "Content-Type": "application/json" },
   });
 });

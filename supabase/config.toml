@@ -7,3 +7,10 @@ project_id = "gabdgtrutcbozhpltxxn"
     verify_jwt = false
   [functions.stripe-webhook]
     verify_jwt = false
+  # Cron endpoints authenticate via the shared secret in app_settings
+  [functions.cron-lock-rides]
+    verify_jwt = false
+  [functions.cron-payout]
+    verify_jwt = false
+  [functions.cron-reminders]
+    verify_jwt = false
