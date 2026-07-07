@@ -73,7 +73,7 @@ const StripeOnboarding = () => {
           className="w-full max-w-md"
         >
           {status === "complete" ? (
-            <div className="rounded-xl border border-border bg-card p-8 text-center taxi-shadow-card">
+            <div className="rounded-xl border border-border bg-card p-8 text-center shadow-lift">
               <CheckCircle className="mx-auto mb-4 h-12 w-12 text-taxi-success" />
               <h1 className="mb-2 font-display text-2xl font-bold text-card-foreground">
                 Onboarding abgeschlossen!
@@ -89,12 +89,12 @@ const StripeOnboarding = () => {
               </Link>
             </div>
           ) : status === "checking" ? (
-            <div className="rounded-xl border border-border bg-card p-8 text-center taxi-shadow-card">
+            <div className="rounded-xl border border-border bg-card p-8 text-center shadow-lift">
               <Loader2 className="mx-auto mb-4 h-8 w-8 animate-spin text-primary" />
               <p className="text-muted-foreground">Status wird geprüft...</p>
             </div>
           ) : status === "incomplete" ? (
-            <div className="rounded-xl border border-border bg-card p-8 text-center taxi-shadow-card">
+            <div className="rounded-xl border border-border bg-card p-8 text-center shadow-lift">
               <RefreshCw className="mx-auto mb-4 h-12 w-12 text-primary" />
               <h1 className="mb-2 font-display text-2xl font-bold text-card-foreground">
                 Onboarding noch nicht abgeschlossen
@@ -111,7 +111,7 @@ const StripeOnboarding = () => {
               </button>
             </div>
           ) : (
-            <div className="rounded-xl border border-border bg-card p-8 text-center taxi-shadow-card">
+            <div className="rounded-xl border border-border bg-card p-8 text-center shadow-lift">
               <CreditCard className="mx-auto mb-4 h-12 w-12 text-primary" />
               <h1 className="mb-2 font-display text-2xl font-bold text-card-foreground">
                 Zahlungen empfangen

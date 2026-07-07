@@ -1,42 +1,41 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
-import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
 import Index from "./pages/Index.tsx";
-import RoutePage from "./pages/RoutePage.tsx";
+import SearchResults from "./pages/SearchResults.tsx";
+import CreateRide from "./pages/CreateRide.tsx";
+import RideDetail from "./pages/RideDetail.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
 import Impressum from "./pages/Impressum.tsx";
 import AGB from "./pages/AGB.tsx";
 import Auth from "./pages/Auth.tsx";
 import StripeOnboarding from "./pages/StripeOnboarding.tsx";
-import PaymentSuccess from "./pages/PaymentSuccess.tsx";
 import ResetPassword from "./pages/ResetPassword.tsx";
 import NotFound from "./pages/NotFound.tsx";
-import SearchResults from "./pages/SearchResults.tsx";
 
 const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
     <TooltipProvider>
-      <Toaster />
-      <Sonner />
+      <Sonner position="top-center" />
       <BrowserRouter>
         <AuthProvider>
           <Routes>
             <Route path="/" element={<Index />} />
-            <Route path="/search" element={<SearchResults />} />
-            <Route path="/route/:routeId" element={<RoutePage />} />
+            <Route path="/suche" element={<SearchResults />} />
+            <Route path="/search" element={<Navigate to="/suche" replace />} />
+            <Route path="/fahrt-erstellen" element={<CreateRide />} />
+            <Route path="/fahrt/:id" element={<RideDetail />} />
             <Route path="/dashboard" element={<Dashboard />} />
             <Route path="/datenschutz" element={<Datenschutz />} />
             <Route path="/agb" element={<AGB />} />
             <Route path="/impressum" element={<Impressum />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/stripe-onboarding" element={<StripeOnboarding />} />
-            <Route path="/payment-success" element={<PaymentSuccess />} />
             <Route path="/reset-password" element={<ResetPassword />} />
             <Route path="*" element={<NotFound />} />
           </Routes>

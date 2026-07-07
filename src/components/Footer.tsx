@@ -1,42 +1,40 @@
-import { Car } from "lucide-react";
 import { Link } from "react-router-dom";
+import { Logo } from "@/components/Logo";
 
 const Footer = () => {
   return (
-    <footer className="taxi-gradient-hero px-4 py-12">
-      <div className="container mx-auto max-w-4xl">
-        <div className="mb-8 flex items-center justify-center gap-2">
-          <Car className="h-6 w-6 text-primary" />
-          <span className="font-display text-xl font-bold text-secondary-foreground">
-            TaxiTeilen
-          </span>
-        </div>
-
-        <div className="mb-8 text-center text-sm text-secondary-foreground/50 space-y-2">
-          <p>
-            TaxiTeilen vermittelt lediglich Mitfahrgelegenheiten und ist kein Zahlungspartner der Taxiunternehmen.
-          </p>
-          <p>
-            Die Buchung und Bezahlung des Taxis erfolgt direkt durch den Initiator beim jeweiligen Taxiunternehmen.
-          </p>
-          <p>TaxiTeilen erhebt eine Servicegebühr von 10% für die Vermittlung.</p>
-        </div>
-
-        <div className="border-t border-secondary-foreground/10 pt-6 flex flex-col items-center gap-3">
-          <div className="flex gap-4 text-xs">
-            <Link to="/datenschutz" className="text-secondary-foreground/50 hover:text-secondary-foreground transition-colors">
-              Datenschutz
-            </Link>
-             <Link to="/agb" className="text-secondary-foreground/50 hover:text-secondary-foreground transition-colors">
-               AGB
-             </Link>
-             <Link to="/impressum" className="text-secondary-foreground/50 hover:text-secondary-foreground transition-colors">
-               Impressum
-             </Link>
+    <footer className="border-t border-border bg-background">
+      <div className="container py-14">
+        <div className="flex flex-col gap-10 md:flex-row md:items-start md:justify-between">
+          <div className="max-w-sm space-y-3">
+            <Logo />
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Teile dein Flughafen-Taxi und spare bis zu 75&nbsp;%. Fester Preis,
+              faire Aufteilung, kostenlose Stornierung bis 24&nbsp;Stunden vor Abfahrt.
+            </p>
           </div>
-          <span className="text-xs text-secondary-foreground/30">
-            © {new Date().getFullYear()} TaxiTeilen. Alle Rechte vorbehalten.
-          </span>
+
+          <div className="grid grid-cols-2 gap-10 text-sm">
+            <div className="space-y-2.5">
+              <p className="font-semibold">Plattform</p>
+              <a href="/#strecken" className="block text-muted-foreground hover:text-foreground transition-colors">Strecken</a>
+              <a href="/#so-funktionierts" className="block text-muted-foreground hover:text-foreground transition-colors">So funktioniert's</a>
+              <Link to="/fahrt-erstellen" className="block text-muted-foreground hover:text-foreground transition-colors">Fahrt anbieten</Link>
+            </div>
+            <div className="space-y-2.5">
+              <p className="font-semibold">Rechtliches</p>
+              <Link to="/agb" className="block text-muted-foreground hover:text-foreground transition-colors">AGB</Link>
+              <Link to="/datenschutz" className="block text-muted-foreground hover:text-foreground transition-colors">Datenschutz</Link>
+              <Link to="/impressum" className="block text-muted-foreground hover:text-foreground transition-colors">Impressum</Link>
+            </div>
+          </div>
+        </div>
+
+        <div className="mt-12 border-t border-border pt-6 text-xs text-muted-foreground">
+          <p>
+            TaxiTeilen vermittelt Fahrgemeinschaften — wir sind kein Taxiunternehmen
+            und keine Vertragspartei der Beförderung. © {new Date().getFullYear()} TaxiTeilen
+          </p>
         </div>
       </div>
     </footer>

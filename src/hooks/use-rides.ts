@@ -1,211 +1,205 @@
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+// v2 ride data: search open rides, load one ride with members, my rides.
+import { useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { useToast } from "@/hooks/use-toast";
+import type {
+  MembershipRow,
+  PaymentRow,
+  RideDirection,
+  RideGroupRow,
+} from "@/integrations/supabase/types";
 
-export type RideRequestRow = {
-  id: string;
-  ride_group_id: string;
-  user_id: string;
-  route_id: string;
-  flight_number: string;
-  scheduled_arrival: string;
-  estimated_arrival: string;
-  flight_status: string;
-  is_initiator: boolean;
-  num_persons: number;
-  created_at: string;
-  profile?: { full_name: string | null } | null;
-};
+export interface RideSearchParams {
+  routeId?: string;
+  direction?: RideDirection;
+  date?: string; // YYYY-MM-DD (Europe/Berlin day)
+}
 
-export function useRideRequests(routeId: string | undefined, estimatedArrival: string | null) {
-  const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
+export interface RideGroupWithSeats extends RideGroupRow {
+  seats_taken: number;
+  members_count: number;
+}
 
+function withSeatCounts(
+  groups: (RideGroupRow & { memberships: Pick<MembershipRow, "num_persons" | "status">[] })[]
+): RideGroupWithSeats[] {
+  return groups.map((g) => {
+    const live = (g.memberships ?? []).filter((m) =>
+      ["active", "pending_payment"].includes(m.status)
+    );
+    const { memberships: _m, ...group } = g;
+    return {
+      ...group,
+      seats_taken: live.reduce((sum, m) => sum + m.num_persons, 0),
+      members_count: live.length,
+    };
+  });
+}
+
+export function useRideSearch(params: RideSearchParams) {
   return useQuery({
-    queryKey: ["ride-requests", routeId, estimatedArrival, today],
-    enabled: !!routeId && !!estimatedArrival,
-    queryFn: async () => {
-      if (!routeId || !estimatedArrival) return [];
-
-      // Only get ride requests for TODAY's open groups on this route
-      const { data: todayGroups } = await supabase
+    queryKey: ["ride-search", params],
+    queryFn: async (): Promise<RideGroupWithSeats[]> => {
+      let query = supabase
         .from("ride_groups")
-        .select("id")
-        .eq("route_id", routeId)
-        .eq("status", "open")
-        .eq("ride_date", today);
+        .select("*, memberships(num_persons, status)")
+        .in("status", ["open", "locked"])
+        .gt("departure_at", new Date(Date.now() + 60 * 60_000).toISOString())
+        .order("departure_at")
+        .limit(50);
+      if (params.routeId) query = query.eq("route_id", params.routeId);
+      if (params.direction) query = query.eq("direction", params.direction);
+      if (params.date) {
+        // Interpret the date in local (German) time
+        const start = new Date(`${params.date}T00:00:00`);
+        const end = new Date(start.getTime() + 24 * 3_600_000);
+        query = query.gte("departure_at", start.toISOString()).lt("departure_at", end.toISOString());
+      }
+      const { data, error } = await query;
+      if (error) throw error;
+      return withSeatCounts(data ?? []);
+    },
+  });
+}
 
-      if (!todayGroups || todayGroups.length === 0) return [];
+export interface RideMember extends MembershipRow {
+  profile: { full_name: string | null } | null;
+}
 
-      const groupIds = todayGroups.map((g) => g.id);
+export interface RideDetail {
+  group: RideGroupRow;
+  members: RideMember[];
+  seatsTaken: number;
+  myMembership: MembershipRow | null;
+  myPayment: PaymentRow | null;
+}
 
-      const { data, error } = await supabase
-        .from("ride_requests")
+export function useRideDetail(groupId: string | undefined) {
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  const query = useQuery({
+    queryKey: ["ride-detail", groupId, user?.id],
+    enabled: Boolean(groupId),
+    queryFn: async (): Promise<RideDetail | null> => {
+      const { data: group, error } = await supabase
+        .from("ride_groups")
         .select("*")
-        .eq("route_id", routeId)
-        .in("ride_group_id", groupIds);
-
-      if (error) throw error;
-      if (!data || data.length === 0) return [];
-
-      // Fetch profile names for all user_ids
-      const userIds = [...new Set(data.map((r) => r.user_id))];
-      const { data: profiles } = await supabase
-        .from("profiles")
-        .select("user_id, full_name")
-        .in("user_id", userIds);
-
-      const [h, m] = estimatedArrival.split(":").map(Number);
-      const targetMin = h * 60 + m;
-
-      const profileMap = new Map(
-        (profiles || []).map((p) => [p.user_id, p.full_name])
-      );
-
-      return (data as unknown as RideRequestRow[])
-        .map((r) => ({ ...r, profile: { full_name: profileMap.get(r.user_id) ?? null } }))
-        .filter((r) => {
-          const [rh, rm] = r.estimated_arrival.split(":").map(Number);
-          return Math.abs(rh * 60 + rm - targetMin) <= 120;
-        });
-    },
-  });
-}
-
-export function useJoinRide(routeId: string | undefined) {
-  const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: async (params: {
-      desiredTime: string;
-      flightNumber?: string;
-      scheduledArrival?: string;
-      estimatedArrival: string;
-      flightStatus?: string;
-      numPersons?: number;
-    }) => {
-      if (!user || !routeId) throw new Error("Nicht eingeloggt");
-
-      // Check if user already has a request for this route in an OPEN group TODAY
-      const today = new Date().toISOString().split("T")[0];
-      const { data: existing } = await supabase
-        .from("ride_requests")
-        .select("id, ride_group_id")
-        .eq("user_id", user.id)
-        .eq("route_id", routeId);
-
-      if (existing && existing.length > 0) {
-        const groupIds = [...new Set(existing.map((r) => r.ride_group_id))];
-        const { data: openGroups } = await supabase
-          .from("ride_groups")
-          .select("id")
-          .in("id", groupIds)
-          .eq("status", "open")
-          .eq("ride_date", today);
-
-        if (openGroups && openGroups.length > 0) {
-          throw new Error("Du bist bereits für diese Route eingetragen.");
-        }
-      }
-
-      // Find an open group for this route TODAY, or create one
-      let groupId: string;
-      const { data: openGroup } = await supabase
-        .from("ride_groups")
-        .select("id")
-        .eq("route_id", routeId)
-        .eq("status", "open")
-        .eq("ride_date", today)
-        .limit(1)
+        .eq("id", groupId!)
         .maybeSingle();
+      if (error) throw error;
+      if (!group) return null;
 
-      if (openGroup) {
-        groupId = openGroup.id;
-      } else {
-        // Creating a new group = becoming initiator → check Stripe Connect
-        const { data: connectStatus, error: connectErr } = await supabase.functions.invoke("stripe-connect-status");
-        if (connectErr || !connectStatus?.onboarded) {
-          throw new Error("Um als Initiator eine Fahrt zu erstellen, musst du zuerst den Zahlungsempfang einrichten. Gehe dazu auf dein Dashboard → Zahlungsempfang einrichten.");
+      const { data: members } = await supabase
+        .from("memberships")
+        .select("*")
+        .eq("ride_group_id", groupId!)
+        .in("status", ["active", "pending_payment"])
+        .order("joined_at");
+
+      // Profile names are visible to co-members via RLS; fall back gracefully.
+      const userIds = (members ?? []).map((m) => m.user_id);
+      const { data: profiles } = userIds.length
+        ? await supabase.from("profiles").select("user_id, full_name").in("user_id", userIds)
+        : { data: [] };
+      const nameMap = new Map((profiles ?? []).map((p) => [p.user_id, p.full_name]));
+
+      const enriched: RideMember[] = (members ?? []).map((m) => ({
+        ...m,
+        profile: { full_name: nameMap.get(m.user_id) ?? null },
+      }));
+
+      let myMembership: MembershipRow | null = null;
+      let myPayment: PaymentRow | null = null;
+      if (user) {
+        myMembership = (members ?? []).find((m) => m.user_id === user.id) ?? null;
+        if (!myMembership) {
+          // May exist with a cancelled/no_show status (not in the list above)
+          const { data: mine } = await supabase
+            .from("memberships")
+            .select("*")
+            .eq("ride_group_id", groupId!)
+            .eq("user_id", user.id)
+            .order("joined_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+          myMembership = mine ?? null;
         }
-
-        const { data: newGroup, error: gErr } = await supabase
-          .from("ride_groups")
-          .insert({ route_id: routeId, created_by: user.id, ride_date: today } as any)
-          .select("id")
-          .single();
-        if (gErr) throw gErr;
-        groupId = newGroup.id;
+        if (myMembership) {
+          const { data: payment } = await supabase
+            .from("payments")
+            .select("*")
+            .eq("membership_id", myMembership.id)
+            .maybeSingle();
+          myPayment = payment ?? null;
+        }
       }
 
-      const { error } = await supabase.from("ride_requests").insert({
-        ride_group_id: groupId,
-        user_id: user.id,
-        route_id: routeId,
-        flight_number: params.flightNumber || null,
-        scheduled_arrival: params.scheduledArrival || null,
-        estimated_arrival: params.estimatedArrival,
-        flight_status: params.flightStatus || null,
-        desired_time: params.desiredTime,
-        is_initiator: !openGroup,
-        num_persons: params.numPersons || 1,
-      } as any);
+      const seatsTaken = enriched
+        .filter((m) => ["active", "pending_payment"].includes(m.status))
+        .reduce((sum, m) => sum + m.num_persons, 0);
 
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["ride-requests"] });
-      toast({ title: "Eingetragen!", description: "Du bist jetzt für diese Fahrt eingetragen." });
-    },
-    onError: (err: Error) => {
-      toast({ title: "Fehler", description: err.message, variant: "destructive" });
+      return { group, members: enriched, seatsTaken, myMembership, myPayment };
     },
   });
+
+  // Live updates: reload on membership/group changes
+  useEffect(() => {
+    if (!groupId) return;
+    const channel = supabase
+      .channel(`ride-${groupId}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "memberships", filter: `ride_group_id=eq.${groupId}` },
+        () => queryClient.invalidateQueries({ queryKey: ["ride-detail", groupId] })
+      )
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ride_groups", filter: `id=eq.${groupId}` },
+        () => queryClient.invalidateQueries({ queryKey: ["ride-detail", groupId] })
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [groupId, queryClient]);
+
+  return query;
 }
 
-export function useLeaveRide() {
+export interface MyRide {
+  membership: MembershipRow;
+  group: RideGroupRow;
+  payment: PaymentRow | null;
+}
+
+export function useMyRides() {
   const { user } = useAuth();
-  const queryClient = useQueryClient();
-  const { toast } = useToast();
-
-  return useMutation({
-    mutationFn: async (rideRequestId: string) => {
-      if (!user) throw new Error("Nicht eingeloggt");
-
-      // Get the ride request to find the group ID
-      const { data: request } = await supabase
-        .from("ride_requests")
-        .select("ride_group_id")
-        .eq("id", rideRequestId)
-        .single();
-
-      // Cancel any payment holds for this user in this group
-      if (request?.ride_group_id) {
-        try {
-          await supabase.functions.invoke("cancel-payment-hold", {
-            body: { ride_group_id: request.ride_group_id },
-          });
-        } catch (err) {
-          console.warn("Could not cancel payment hold:", err);
-        }
-      }
-
-      const { error } = await supabase
-        .from("ride_requests")
-        .delete()
-        .eq("id", rideRequestId)
-        .eq("user_id", user.id);
-
+  return useQuery({
+    queryKey: ["my-rides", user?.id],
+    enabled: Boolean(user),
+    queryFn: async (): Promise<MyRide[]> => {
+      const { data: memberships, error } = await supabase
+        .from("memberships")
+        .select("*, ride_groups(*), payments(*)")
+        .eq("user_id", user!.id)
+        .order("joined_at", { ascending: false })
+        .limit(50);
       if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["ride-requests"] });
-      queryClient.invalidateQueries({ queryKey: ["my-rides"] });
-      toast({ title: "Ausgetragen", description: "Du bist nicht mehr für diese Fahrt eingetragen. Deine Reservierung wurde storniert." });
-    },
-    onError: (err: Error) => {
-      toast({ title: "Fehler", description: err.message, variant: "destructive" });
+      return (memberships ?? [])
+        .map((m) => {
+          const { ride_groups, payments, ...membership } = m as MembershipRow & {
+            ride_groups: RideGroupRow;
+            payments: PaymentRow | PaymentRow[] | null;
+          };
+          return {
+            membership,
+            group: ride_groups,
+            payment: Array.isArray(payments) ? payments[0] ?? null : payments,
+          };
+        })
+        .filter((r) => r.group);
     },
   });
 }

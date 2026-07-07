@@ -1,227 +1,183 @@
 import { Link, useNavigate } from "react-router-dom";
 import { motion } from "framer-motion";
-import {
-  User,
-  Car,
-  CreditCard,
-  Clock,
-  CheckCircle,
-  AlertCircle,
-  LogOut,
-  Mail,
-  Phone,
-  ArrowRight,
-  Timer,
-} from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useProfile, useMyRides } from "@/hooks/use-profile";
-import { ROUTES } from "@/lib/data";
+import { useQuery } from "@tanstack/react-query";
+import { ArrowRight, CheckCircle2, CreditCard, Crown, Loader2, Plus } from "lucide-react";
+import { toast } from "sonner";
 import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
+import { RoutePath } from "@/components/RoutePath";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/AuthContext";
+import { useProfile } from "@/hooks/use-profile";
+import { useMyRides, type MyRide } from "@/hooks/use-rides";
+import { useRoutes } from "@/hooks/use-routes";
+import { api } from "@/lib/api";
+import { formatDepartureShort, formatEuro } from "@/lib/format";
 
-const statusLabels: Record<string, { label: string; icon: typeof CheckCircle; className: string }> = {
-  open: { label: "Offen", icon: Clock, className: "text-primary bg-primary/10" },
-  completed: { label: "Abgeschlossen", icon: CheckCircle, className: "text-taxi-success bg-taxi-success/10" },
-  cancelled: { label: "Storniert", icon: AlertCircle, className: "text-destructive bg-destructive/10" },
-};
-
-const paymentLabels: Record<string, { label: string; className: string }> = {
-  pending: { label: "Ausstehend", className: "text-primary bg-primary/10" },
-  authorized: { label: "Reserviert", className: "text-taxi-info bg-taxi-info/10" },
-  captured: { label: "Abgebucht", className: "text-taxi-success bg-taxi-success/10" },
-  failed: { label: "Fehlgeschlagen", className: "text-destructive bg-destructive/10" },
+const membershipLabel: Record<string, { label: string; cls: string }> = {
+  pending_payment: { label: "Zahlung ausstehend", cls: "bg-accent text-accent-foreground" },
+  active: { label: "Dabei", cls: "bg-success text-success-foreground" },
+  cancelled_free: { label: "Storniert (erstattet)", cls: "bg-muted text-muted-foreground" },
+  cancelled_late: { label: "Storniert (einbehalten)", cls: "bg-muted text-muted-foreground" },
+  no_show: { label: "Nicht erschienen", cls: "bg-destructive text-destructive-foreground" },
+  expired: { label: "Abgelaufen", cls: "bg-muted text-muted-foreground" },
 };
 
 const Dashboard = () => {
-  const { user, signOut } = useAuth();
+  const { user, loading } = useAuth();
   const navigate = useNavigate();
-  const { data: profile, isLoading: loadingProfile } = useProfile();
-  const { data: rides = [], isLoading: loadingRides } = useMyRides();
+  const { data: profile } = useProfile();
+  const { data: rides, isLoading } = useMyRides();
+  const { data: routes } = useRoutes();
+  const routeMap = new Map((routes ?? []).map((r) => [r.id, r]));
 
-  if (!user) {
-    navigate("/auth");
+  const { data: connect } = useQuery({
+    queryKey: ["connect-status", user?.id],
+    enabled: Boolean(user),
+    queryFn: api.connectStatus,
+  });
+
+  if (!loading && !user) {
+    navigate("/auth?redirect=/dashboard");
     return null;
   }
 
-  const activeRides = rides.filter((r) => r.group?.status === "open");
-  const pastRides = rides.filter((r) => r.group?.status !== "open");
+  const startOnboarding = async () => {
+    try {
+      const res = await api.connectOnboarding();
+      if (res.url) window.location.href = res.url;
+      else toast.success("Zahlungsempfang ist bereits eingerichtet.");
+    } catch (err) {
+      toast.error((err as Error).message);
+    }
+  };
+
+  const now = Date.now();
+  const upcoming = (rides ?? []).filter(
+    (r) => new Date(r.group.departure_at).getTime() >= now &&
+      !["cancelled"].includes(r.group.status) &&
+      ["pending_payment", "active"].includes(r.membership.status)
+  );
+  const past = (rides ?? []).filter((r) => !upcoming.includes(r));
+
+  const RideRow = ({ ride }: { ride: MyRide }) => {
+    const route = routeMap.get(ride.group.route_id);
+    if (!route) return null;
+    const from = ride.group.direction === "to_hub" ? route.city.name : route.hub.name;
+    const to = ride.group.direction === "to_hub" ? route.hub.name : route.city.name;
+    const isInitiator = ride.membership.role === "initiator";
+    const badge =
+      ride.group.status === "cancelled"
+        ? { label: "Fahrt abgesagt", cls: "bg-muted text-muted-foreground" }
+        : membershipLabel[ride.membership.status] ?? membershipLabel.active;
+
+    return (
+      <Link
+        to={`/fahrt/${ride.group.id}`}
+        className="group flex items-center gap-4 rounded-2xl border border-border/70 bg-card p-5 shadow-lift transition-all hover:-translate-y-0.5 hover:shadow-lift-lg"
+      >
+        <div className="min-w-0 flex-1">
+          <RoutePath from={from} to={to} compact className="[&_span]:!text-[15px]" />
+          <div className="mt-2 flex flex-wrap items-center gap-2 text-xs">
+            <span className="font-semibold text-muted-foreground">
+              {formatDepartureShort(ride.group.departure_at)}
+            </span>
+            <span className={`rounded-full px-2.5 py-0.5 font-bold ${badge.cls}`}>{badge.label}</span>
+            {isInitiator && (
+              <span className="flex items-center gap-1 rounded-full bg-secondary px-2.5 py-0.5 font-bold">
+                <Crown className="h-3 w-3" /> Initiator
+              </span>
+            )}
+            {ride.payment && ["paid", "retained", "transferred"].includes(ride.payment.status) && !isInitiator && (
+              <span className="text-muted-foreground">{formatEuro(ride.payment.amount_cents)} gezahlt</span>
+            )}
+          </div>
+        </div>
+        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground transition-transform group-hover:translate-x-1" />
+      </Link>
+    );
+  };
 
   return (
-    <div className="flex min-h-screen flex-col bg-background">
+    <div className="min-h-screen flex flex-col">
       <Navbar />
 
-      <div className="container mx-auto max-w-3xl flex-1 px-4 py-8">
-        {/* Profile Card */}
-        <motion.div
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mb-8 rounded-xl border border-border bg-card p-6 taxi-shadow-card"
-        >
-          <div className="flex items-start justify-between">
-            <div className="flex items-center gap-4">
-              <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10">
-                <User className="h-7 w-7 text-primary" />
+      <main className="flex-1">
+        <div className="container max-w-3xl py-10 md:py-14">
+          <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }}>
+            <h1 className="text-3xl font-bold md:text-4xl">
+              Moin{profile?.full_name ? `, ${profile.full_name.split(" ")[0]}` : ""} 👋
+            </h1>
+            <p className="mt-2 text-muted-foreground">Deine Fahrten und Einstellungen.</p>
+          </motion.div>
+
+          {/* Connect status */}
+          <div className="mt-8 rounded-2xl border border-border/70 bg-card p-5 shadow-lift">
+            {connect?.onboarded ? (
+              <p className="flex items-center gap-2.5 text-sm">
+                <CheckCircle2 className="h-5 w-5 text-success" />
+                <span>
+                  <strong>Zahlungsempfang aktiv.</strong>{" "}
+                  <span className="text-muted-foreground">Auszahlungen laufen automatisch auf dein Konto.</span>
+                </span>
+              </p>
+            ) : (
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <p className="flex items-center gap-2.5 text-sm">
+                  <CreditCard className="h-5 w-5 text-muted-foreground" />
+                  <span>
+                    <strong>Zahlungsempfang einrichten,</strong>{" "}
+                    <span className="text-muted-foreground">um Fahrten anbieten zu können.</span>
+                  </span>
+                </p>
+                <Button size="sm" onClick={startOnboarding}>Einrichten</Button>
               </div>
-              <div>
-                <h1 className="font-display text-xl font-bold text-card-foreground">
-                  {profile?.full_name || user.email?.split("@")[0] || "Nutzer"}
-                </h1>
-                <div className="mt-1 space-y-0.5">
-                  {user.email && (
-                    <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Mail className="h-3.5 w-3.5" /> {user.email}
-                    </p>
-                  )}
-                  {profile?.phone && (
-                    <p className="flex items-center gap-1.5 text-sm text-muted-foreground">
-                      <Phone className="h-3.5 w-3.5" /> {profile.phone}
-                    </p>
-                  )}
-                </div>
-              </div>
-            </div>
-            <button
-              onClick={signOut}
-              className="flex items-center gap-1.5 rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <LogOut className="h-4 w-4" />
-              Abmelden
-            </button>
+            )}
           </div>
 
-          {/* Stripe Connect Status */}
-          {profile?.stripe_connect_onboarding_complete ? (
-            <div className="mt-4 flex items-center gap-2 rounded-lg bg-taxi-success/10 px-4 py-2.5 text-sm font-medium text-taxi-success">
-              <CheckCircle className="h-4 w-4" />
-              Zahlungsempfang eingerichtet
+          {/* Upcoming */}
+          <div className="mt-10">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="font-display text-xl font-bold">Kommende Fahrten</h2>
+              <Button size="sm" variant="outline" asChild>
+                <Link to="/fahrt-erstellen"><Plus /> Neue Fahrt</Link>
+              </Button>
             </div>
-          ) : (
-            <Link
-              to="/stripe-onboarding"
-              className="mt-4 flex items-center justify-between rounded-lg border border-primary/20 bg-primary/5 px-4 py-2.5 text-sm font-medium text-primary transition-colors hover:bg-primary/10"
-            >
-              <span className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Zahlungsempfang einrichten (um als Initiator Geld zu erhalten)
-              </span>
-              <ArrowRight className="h-4 w-4" />
-            </Link>
-          )}
-        </motion.div>
+            {isLoading ? (
+              <div className="flex items-center justify-center py-10 text-muted-foreground">
+                <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Laden …
+              </div>
+            ) : upcoming.length === 0 ? (
+              <div className="rounded-2xl border border-dashed border-border p-8 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Keine kommenden Fahrten.{" "}
+                  <Link to="/suche" className="font-semibold text-foreground underline underline-offset-4">
+                    Jetzt eine finden
+                  </Link>
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {upcoming.map((r) => <RideRow key={r.membership.id} ride={r} />)}
+              </div>
+            )}
+          </div>
 
-        {/* Active Rides */}
-        <section className="mb-8">
-          <h2 className="mb-4 font-display text-lg font-semibold text-foreground">
-            <Car className="mb-0.5 mr-2 inline-block h-5 w-5 text-primary" />
-            Aktive Fahrten
-          </h2>
-          {loadingRides ? (
-            <p className="text-sm text-muted-foreground">Laden…</p>
-          ) : activeRides.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-border bg-card p-6 text-center">
-              <Car className="mx-auto mb-2 h-8 w-8 text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">Keine aktiven Fahrten.</p>
-              <Link to="/" className="mt-2 inline-block text-sm font-medium text-primary underline">
-                Jetzt Taxi teilen →
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {activeRides.map((ride) => (
-                <RideCard key={ride.id} ride={ride} />
-              ))}
+          {/* Past */}
+          {past.length > 0 && (
+            <div className="mt-10">
+              <h2 className="mb-4 font-display text-xl font-bold">Vergangene & stornierte Fahrten</h2>
+              <div className="space-y-3 opacity-80">
+                {past.slice(0, 10).map((r) => <RideRow key={r.membership.id} ride={r} />)}
+              </div>
             </div>
           )}
-        </section>
-
-        {/* Past Rides */}
-        {pastRides.length > 0 && (
-          <section>
-            <h2 className="mb-4 font-display text-lg font-semibold text-foreground">
-              <Clock className="mb-0.5 mr-2 inline-block h-5 w-5 text-muted-foreground" />
-              Vergangene Fahrten
-            </h2>
-            <div className="space-y-3">
-              {pastRides.map((ride) => (
-                <RideCard key={ride.id} ride={ride} />
-              ))}
-            </div>
-          </section>
-        )}
-      </div>
+        </div>
+      </main>
 
       <Footer />
     </div>
   );
 };
-
-function getPaymentDaysLeft(createdAt: string): number {
-  const created = new Date(createdAt);
-  const expiresAt = new Date(created.getTime() + 7 * 24 * 60 * 60 * 1000);
-  const now = new Date();
-  return Math.max(0, Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24)));
-}
-
-function RideCard({ ride }: { ride: any }) {
-  const route = ROUTES.find((r) => r.id === ride.route_id);
-  const status = statusLabels[ride.group?.status || "open"];
-  const payment = ride.payment ? paymentLabels[ride.payment.status] || null : null;
-  const StatusIcon = status.icon;
-
-  const showExpiry = ride.payment && (ride.payment.status === "authorized" || ride.payment.status === "pending");
-  const daysLeft = showExpiry ? getPaymentDaysLeft(ride.payment.created_at) : null;
-
-  return (
-    <Link
-      to={`/route/${ride.route_id}`}
-      className="block rounded-lg border border-border bg-card p-4 transition-all hover:border-primary/30 taxi-shadow-card"
-    >
-      <div className="flex items-center justify-between">
-        <div>
-          <p className="font-display font-semibold text-card-foreground">
-            {route ? `${route.from} → ${route.to}` : ride.route_id}
-          </p>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            {ride.estimated_arrival} Uhr
-            {ride.flight_number && ` · Flug ${ride.flight_number}`}
-            {ride.num_persons > 1 && ` · ${ride.num_persons} Personen`}
-          </p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
-            {new Date(ride.created_at).toLocaleDateString("de-DE", {
-              day: "2-digit",
-              month: "2-digit",
-              year: "numeric",
-            })}
-          </p>
-        </div>
-        <div className="flex flex-col items-end gap-1.5">
-          <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${status.className}`}>
-            <StatusIcon className="h-3 w-3" />
-            {status.label}
-          </span>
-          {payment && (
-            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${payment.className}`}>
-              <CreditCard className="h-3 w-3" />
-              {payment.label}
-              {ride.payment?.amount_captured && ` · ${(ride.payment.amount_captured / 100).toFixed(2)} €`}
-            </span>
-          )}
-          {showExpiry && daysLeft !== null && (
-            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium ${
-              daysLeft === 0
-                ? "bg-destructive/10 text-destructive"
-                : daysLeft <= 2
-                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400"
-                  : "bg-muted text-muted-foreground"
-            }`}>
-              <Timer className="h-3 w-3" />
-              {daysLeft === 0 ? "Abgelaufen" : `${daysLeft}d übrig`}
-            </span>
-          )}
-        </div>
-      </div>
-    </Link>
-  );
-}
 
 export default Dashboard;

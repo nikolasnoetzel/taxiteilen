@@ -1,132 +1,126 @@
+@import "@fontsource-variable/schibsted-grotesk";
+@import "@fontsource/instrument-serif";
+@import "@fontsource/instrument-serif/400-italic.css";
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&display=swap');
-
+/* ---------------------------------------------------------------------------
+   TaxiTeilen design system "Premium Mobility"
+   Warm paper background, ink-black primary actions, taxi yellow as a precise
+   accent (never as button flood). Light-only by design.
+--------------------------------------------------------------------------- */
 @layer base {
   :root {
-    --background: 220 20% 97%;
-    --foreground: 220 40% 13%;
+    --background: 40 25% 97%;        /* warm paper #FAF9F5 */
+    --foreground: 24 10% 9%;         /* ink */
 
     --card: 0 0% 100%;
-    --card-foreground: 220 40% 13%;
+    --card-foreground: 24 10% 9%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 220 40% 13%;
+    --popover-foreground: 24 10% 9%;
 
-    --primary: 40 95% 55%;
-    --primary-foreground: 220 40% 10%;
+    --primary: 24 10% 9%;            /* ink buttons (Apple-style) */
+    --primary-foreground: 40 25% 97%;
 
-    --secondary: 220 35% 18%;
-    --secondary-foreground: 40 95% 92%;
+    --secondary: 40 18% 92%;         /* warm light gray */
+    --secondary-foreground: 24 10% 9%;
 
-    --muted: 220 15% 92%;
-    --muted-foreground: 220 10% 46%;
+    --muted: 40 18% 93%;
+    --muted-foreground: 30 5% 42%;
 
-    --accent: 40 80% 48%;
-    --accent-foreground: 220 40% 10%;
+    --accent: 48 91% 53%;            /* taxi yellow #F5C518 */
+    --accent-foreground: 24 10% 9%;
 
-    --destructive: 0 72% 51%;
+    --success: 158 60% 30%;          /* deep green for refunds/confirmation */
+    --success-foreground: 0 0% 100%;
+
+    --destructive: 5 70% 47%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 220 15% 88%;
-    --input: 220 15% 88%;
-    --ring: 40 95% 55%;
+    --border: 38 14% 87%;
+    --input: 38 14% 84%;
+    --ring: 24 10% 9%;
 
-    --radius: 0.75rem;
-
-    --sidebar-background: 220 35% 18%;
-    --sidebar-foreground: 220 15% 90%;
-    --sidebar-primary: 40 95% 55%;
-    --sidebar-primary-foreground: 220 40% 10%;
-    --sidebar-accent: 220 30% 25%;
-    --sidebar-accent-foreground: 220 15% 90%;
-    --sidebar-border: 220 25% 28%;
-    --sidebar-ring: 40 95% 55%;
-
-    /* Custom tokens */
-    --taxi-gold: 40 95% 55%;
-    --taxi-gold-light: 42 100% 70%;
-    --taxi-navy: 220 35% 18%;
-    --taxi-navy-deep: 220 40% 10%;
-    --taxi-success: 152 60% 42%;
-    --taxi-info: 210 80% 55%;
-
-    --font-display: 'Space Grotesk', sans-serif;
-    --font-body: 'DM Sans', sans-serif;
-
-    --gradient-hero: linear-gradient(135deg, hsl(220 35% 18%), hsl(220 40% 10%));
-    --gradient-gold: linear-gradient(135deg, hsl(40 95% 55%), hsl(35 90% 48%));
-    --gradient-card: linear-gradient(145deg, hsl(0 0% 100%), hsl(220 20% 97%));
-
-    --shadow-card: 0 4px 24px -4px hsl(220 40% 13% / 0.08);
-    --shadow-card-hover: 0 8px 32px -4px hsl(220 40% 13% / 0.14);
-    --shadow-gold: 0 4px 20px -4px hsl(40 95% 55% / 0.4);
+    --radius: 1rem;
   }
 
-  .dark {
-    --background: 220 40% 10%;
-    --foreground: 220 15% 92%;
-    --card: 220 35% 15%;
-    --card-foreground: 220 15% 92%;
-    --popover: 220 35% 15%;
-    --popover-foreground: 220 15% 92%;
-    --primary: 40 95% 55%;
-    --primary-foreground: 220 40% 10%;
-    --secondary: 220 25% 22%;
-    --secondary-foreground: 220 15% 90%;
-    --muted: 220 25% 20%;
-    --muted-foreground: 220 10% 55%;
-    --accent: 40 80% 48%;
-    --accent-foreground: 220 40% 10%;
-    --destructive: 0 62.8% 30.6%;
-    --destructive-foreground: 0 0% 100%;
-    --border: 220 25% 22%;
-    --input: 220 25% 22%;
-    --ring: 40 95% 55%;
-  }
-}
-
-@layer base {
   * {
     @apply border-border;
   }
 
+  html {
+    scroll-behavior: smooth;
+  }
+
   body {
-    @apply bg-background text-foreground;
-    font-family: var(--font-body);
+    @apply bg-background text-foreground font-body antialiased;
+    font-feature-settings: "ss01", "cv01";
   }
 
   h1, h2, h3, h4, h5, h6 {
-    font-family: var(--font-display);
+    @apply font-display tracking-tight;
+  }
+
+  ::selection {
+    background: hsl(var(--accent));
+    color: hsl(var(--accent-foreground));
   }
 }
 
 @layer components {
-  .taxi-gradient-hero {
-    background: var(--gradient-hero);
+  /* Serif accent for single words inside display headlines */
+  .serif-accent {
+    font-family: "Instrument Serif", Georgia, serif;
+    font-style: italic;
+    font-weight: 400;
+    letter-spacing: -0.01em;
   }
 
-  .taxi-gradient-gold {
-    background: var(--gradient-gold);
+  /* Soft layered card shadow */
+  .shadow-lift {
+    box-shadow:
+      0 1px 2px hsl(24 10% 9% / 0.04),
+      0 8px 24px -8px hsl(24 10% 9% / 0.12);
+  }
+  .shadow-lift-lg {
+    box-shadow:
+      0 2px 4px hsl(24 10% 9% / 0.05),
+      0 24px 48px -16px hsl(24 10% 9% / 0.18);
   }
 
-  .taxi-shadow-card {
-    box-shadow: var(--shadow-card);
+  /* Glass navbar */
+  .glass {
+    background: hsl(40 25% 97% / 0.82);
+    backdrop-filter: blur(14px) saturate(1.4);
+    -webkit-backdrop-filter: blur(14px) saturate(1.4);
   }
 
-  .taxi-shadow-card-hover {
-    box-shadow: var(--shadow-card-hover);
+  /* Dashed route line motif */
+  .route-dash {
+    background-image: linear-gradient(to right, hsl(var(--foreground) / 0.35) 45%, transparent 45%);
+    background-size: 8px 1.5px;
+    background-repeat: repeat-x;
+    background-position: center;
   }
 
-  .taxi-shadow-gold {
-    box-shadow: var(--shadow-gold);
+  /* Ticket edge notches (boarding-pass cards) */
+  .ticket-notch {
+    position: relative;
   }
-
-  .taxi-glass {
-    background: hsl(0 0% 100% / 0.85);
-    backdrop-filter: blur(12px);
-    -webkit-backdrop-filter: blur(12px);
+  .ticket-notch::before,
+  .ticket-notch::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    width: 18px;
+    height: 18px;
+    border-radius: 999px;
+    background: hsl(var(--background));
+    transform: translateY(-50%);
   }
+  .ticket-notch::before { left: -9px; }
+  .ticket-notch::after { right: -9px; }
 }

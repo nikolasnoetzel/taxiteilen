@@ -218,7 +218,7 @@ const Auth = () => {
               <Button
                 type="submit"
                 className="w-full"
-                variant="hero"
+                variant="default"
                 disabled={loading || (!isLogin && !termsAccepted)}
               >
                 {loading

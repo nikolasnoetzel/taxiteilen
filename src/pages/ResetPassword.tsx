@@ -69,7 +69,7 @@ const ResetPassword = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <Button variant="hero" className="w-full" onClick={() => navigate("/auth")}>
+              <Button variant="default" className="w-full" onClick={() => navigate("/auth")}>
                 Zur Anmeldung
               </Button>
             </CardContent>
@@ -113,7 +113,7 @@ const ResetPassword = () => {
                   minLength={6}
                 />
               </div>
-              <Button type="submit" variant="hero" className="w-full" disabled={loading}>
+              <Button type="submit" variant="default" className="w-full" disabled={loading}>
                 {loading ? "Laden..." : "Passwort ändern"}
               </Button>
             </form>
