@@ -1,11 +1,13 @@
-// Reserves a seat (atomic, 30-min TTL) and returns a Stripe Checkout URL.
+// Reserves a seat (atomic, 45-min TTL) and returns a Stripe Checkout URL.
 // Funds land on the PLATFORM balance (separate charges & transfers) — the
 // initiator is paid out 48h after departure by cron-payout.
+// Called again by a rider whose checkout is still pending, it issues a fresh
+// Checkout session for the existing reservation instead of failing.
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { adminClient, ApiError, handler, json, requireUser } from "../_shared/http.ts";
 import { stripeClient } from "../_shared/stripe.ts";
 import { riderCharge } from "../_shared/pricing.ts";
-import { PENDING_PAYMENT_TTL_MINUTES } from "../_shared/policy.ts";
+import { CHECKOUT_SESSION_MINUTES, PENDING_PAYMENT_TTL_MINUTES } from "../_shared/policy.ts";
 import { loadGroup, loadProfile } from "../_shared/rides.ts";
 
 serve(handler(async (req) => {
@@ -21,39 +23,69 @@ serve(handler(async (req) => {
   const profile = await loadProfile(admin, user.id);
   if (profile.blocked_at) throw new ApiError("account_blocked", 403);
 
-  const { group, routeName } = (await loadGroup(admin, ride_group_id));
+  const { group, routeName } = await loadGroup(admin, ride_group_id);
   if (group.initiator_id === user.id) throw new ApiError("already_member");
 
-  // Atomic seat reservation (row lock prevents overbooking)
-  const { data: membershipId, error: reserveError } = await admin.rpc("reserve_membership", {
-    p_group: ride_group_id,
-    p_user: user.id,
-    p_persons: persons,
-    p_ttl_minutes: PENDING_PAYMENT_TTL_MINUTES,
-  });
-  if (reserveError) {
-    const code = reserveError.message?.match(
-      /group_not_found|group_not_joinable|too_close_to_departure|already_member|not_enough_seats/
-    )?.[0] ?? "reserve_failed";
-    throw new ApiError(code, 409);
+  // Retry path: an unpaid reservation already exists → reuse it with a fresh session
+  const { data: existing } = await admin
+    .from("memberships")
+    .select("id, num_persons, payments(id, status, amount_cents, share_cents, fee_cents)")
+    .eq("ride_group_id", ride_group_id)
+    .eq("user_id", user.id)
+    .eq("status", "pending_payment")
+    .maybeSingle();
+
+  let membershipId: string;
+  let paymentId: string;
+  let amountCents: number;
+  let productPersons: number;
+
+  if (existing && (existing.payments as { status?: string } | null)?.status === "requires_payment") {
+    const payment = existing.payments as { id: string; amount_cents: number };
+    membershipId = existing.id;
+    paymentId = payment.id;
+    amountCents = payment.amount_cents;
+    productPersons = existing.num_persons;
+    // Extend the seat reservation to cover the new session lifetime
+    await admin
+      .from("memberships")
+      .update({ pending_expires_at: new Date(Date.now() + PENDING_PAYMENT_TTL_MINUTES * 60_000).toISOString() })
+      .eq("id", membershipId);
+  } else {
+    // Atomic seat reservation (row lock prevents overbooking)
+    const { data: reservedId, error: reserveError } = await admin.rpc("reserve_membership", {
+      p_group: ride_group_id,
+      p_user: user.id,
+      p_persons: persons,
+      p_ttl_minutes: PENDING_PAYMENT_TTL_MINUTES,
+    });
+    if (reserveError) {
+      const code = reserveError.message?.match(
+        /group_not_found|group_not_joinable|too_close_to_departure|already_member|not_enough_seats/
+      )?.[0] ?? "reserve_failed";
+      throw new ApiError(code, 409);
+    }
+    membershipId = reservedId as string;
+    productPersons = persons;
+
+    const charge = riderCharge(group.seat_price_cents, persons);
+    amountCents = charge.amount_cents;
+    const { data: payment, error: paymentError } = await admin
+      .from("payments")
+      .insert({
+        membership_id: membershipId,
+        ride_group_id,
+        user_id: user.id,
+        share_cents: charge.share_cents,
+        fee_cents: charge.fee_cents,
+        amount_cents: charge.amount_cents,
+        status: "requires_payment",
+      })
+      .select("id")
+      .single();
+    if (paymentError || !payment) throw new ApiError("payment_create_failed", 500, paymentError?.message);
+    paymentId = payment.id;
   }
-
-  const charge = riderCharge(group.seat_price_cents, persons);
-
-  const { data: payment, error: paymentError } = await admin
-    .from("payments")
-    .insert({
-      membership_id: membershipId,
-      ride_group_id,
-      user_id: user.id,
-      share_cents: charge.share_cents,
-      fee_cents: charge.fee_cents,
-      amount_cents: charge.amount_cents,
-      status: "requires_payment",
-    })
-    .select("id")
-    .single();
-  if (paymentError || !payment) throw new ApiError("payment_create_failed", 500, paymentError?.message);
 
   // Get or create the Stripe customer
   let customerId = profile.stripe_customer_id;
@@ -72,22 +104,22 @@ serve(handler(async (req) => {
     customer: customerId,
     mode: "payment",
     payment_method_types: ["card"], // no SEPA: 8-week chargeback right clashes with the retention policy
-    expires_at: Math.floor(Date.now() / 1000) + PENDING_PAYMENT_TTL_MINUTES * 60,
+    expires_at: Math.floor(Date.now() / 1000) + CHECKOUT_SESSION_MINUTES * 60,
     payment_intent_data: {
       receipt_email: user.email,
       transfer_group: ride_group_id,
-      metadata: { payment_id: payment.id, membership_id: membershipId, ride_group_id },
+      metadata: { payment_id: paymentId, membership_id: membershipId, ride_group_id },
     },
-    metadata: { payment_id: payment.id, membership_id: membershipId, ride_group_id },
+    metadata: { payment_id: paymentId, membership_id: membershipId, ride_group_id },
     line_items: [
       {
         price_data: {
           currency: "eur",
           product_data: {
             name: `TaxiTeilen — ${routeName}`,
-            description: `Fester Anteil für ${persons} Person${persons > 1 ? "en" : ""} inkl. 20% Servicegebühr. Kostenlose Stornierung bis 24h vor Abfahrt.`,
+            description: `Fester Anteil für ${productPersons} Person${productPersons > 1 ? "en" : ""} inkl. 20% Servicegebühr. Kostenlose Stornierung bis 24h vor Abfahrt.`,
           },
-          unit_amount: charge.amount_cents,
+          unit_amount: amountCents,
         },
         quantity: 1,
       },
@@ -102,7 +134,7 @@ serve(handler(async (req) => {
       stripe_checkout_session_id: session.id,
       stripe_payment_intent_id: (session.payment_intent as string) ?? null,
     })
-    .eq("id", payment.id);
+    .eq("id", paymentId);
 
   return json({ url: session.url });
 }));

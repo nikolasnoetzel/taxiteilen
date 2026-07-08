@@ -3,7 +3,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { adminClient, ApiError, handler, json, requireUser } from "../_shared/http.ts";
 import { stripeClient } from "../_shared/stripe.ts";
 import { isFreeCancellation } from "../_shared/policy.ts";
-import { refundPayment, PaymentRow } from "../_shared/money.ts";
+import { expireCheckout, refundPayment, PaymentRow } from "../_shared/money.ts";
 import { loadGroup, loadProfile, firstName } from "../_shared/rides.ts";
 import { enqueueEmail, templates } from "../_shared/emails.ts";
 
@@ -46,8 +46,10 @@ serve(handler(async (req) => {
     } else {
       await admin.from("payments").update({ status: "retained" }).eq("id", payment.id);
     }
+  } else if (payment && payment.status === "requires_payment") {
+    // Kill the in-flight checkout so it can't complete after the cancel
+    await expireCheckout(stripeClient(), payment as PaymentRow);
   }
-  // pending/unpaid: the checkout session simply expires; nothing was charged.
 
   await admin
     .from("memberships")

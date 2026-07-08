@@ -42,8 +42,16 @@ trägt netto €30 — seinen fairen Anteil.
 | **P4** | Initiator storniert | **≥ 24 h** | **Takeover-Fenster** (12 h, endet spätestens am 24-h-Cutoff): Ein Mitfahrer mit eingerichtetem Zahlungsempfang kann übernehmen — sein eigener Beitrag wird erstattet, die übrigen Anteile gehen später an ihn. Übernimmt niemand: Auflösung + volle Rückerstattung an alle | Kein Strike |
 | **P5** | Initiator storniert / No-Show | **< 24 h** | Volle Rückerstattung an alle Mitfahrer | **Strike** für den Initiator; 3 Strikes ⇒ Konto gesperrt (`profiles.blocked_at`) |
 | **P6** | Fahrt bleibt leer | T-24 h: 0 zahlende Mitfahrer | Kein Geld im Spiel | Initiator erhält Wahl-E-Mail: absagen oder offen lassen. Bei Abfahrt ohne Mitfahrer: Auto-Absage, keinerlei Kosten |
-| **P7** | Plattform storniert | jederzeit | Volle Rückerstattung an alle | Admin-Funktion (Betrug, höhere Gewalt) |
+| **P7** | Plattform storniert / Initiator-No-Show | jederzeit | Volle Rückerstattung an alle | Admin löst über `resolve-dispute` mit `resolved_dissolve` auf (optional mit Strike `no_show_initiator` für den Initiator) |
 | **P8** | Problem gemeldet („Fahrt fand nicht statt") | bis 48 h nach Abfahrt | **Auszahlung der ganzen Gruppe pausiert**, bis ein Admin entscheidet: `resolved_refund` (Melder wird erstattet) oder `resolved_payout` (Auszahlung läuft) | Kartenrückbuchungen (Chargebacks) erzeugen automatisch einen Dispute |
+
+**Auflösungs-Regel:** Wird eine Fahrt aufgelöst (P4-Fenster abgelaufen, P5, P6, P7),
+werden **auch einbehaltene (`retained`) Beträge voll erstattet** — Einbehaltenes steht
+dem Initiator nur zu, wenn die Fahrt stattfindet. Offene Checkout-Sessions werden beim
+Auflösen/Stornieren aktiv beendet; zahlt jemand dennoch „zu spät" (Race), erstattet der
+Stripe-Webhook automatisch (Backstop: Geld ohne Sitzplatz wird immer sofort refundiert).
+Ein Strike für den Initiator (P5) gibt es nur, wenn zum Absagezeitpunkt <24 h aktive,
+bezahlte Mitfahrer betroffen waren.
 
 ### Feste Parameter (in `policy.ts`)
 
@@ -52,7 +60,7 @@ trägt netto €30 — seinen fairen Anteil.
 | Kostenlose Stornierung bis | 24 h vor Abfahrt |
 | Auszahlung an Initiator | 48 h nach Abfahrt (Dispute-Fenster) |
 | Takeover-Fenster | 12 h (max. bis zum 24-h-Cutoff) |
-| Seat-Reservierung beim Checkout | 30 min |
+| Checkout-Session / Seat-Reservierung | 35 min / 45 min (Session endet immer vor der Reservierung) |
 | Mindestvorlauf für Erstellen/Beitreten | 60 min |
 | Strikes bis Sperrung | 3 |
 | Servicegebühr | 20 % |

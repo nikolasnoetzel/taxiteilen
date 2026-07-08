@@ -235,7 +235,7 @@ CREATE TABLE public.disputes (
   raised_by uuid NOT NULL,
   reason text NOT NULL,
   status text NOT NULL DEFAULT 'open'
-    CHECK (status IN ('open', 'resolved_refund', 'resolved_payout')),
+    CHECK (status IN ('open', 'resolved_refund', 'resolved_payout', 'resolved_dissolve')),
   resolution_note text,
   resolved_by uuid,
   resolved_at timestamptz,

@@ -17,6 +17,7 @@ import { useRoutes } from "@/hooks/use-routes";
 import { directionalRoutes } from "@/lib/directions";
 import { api } from "@/lib/api";
 import { seatPriceCents, formatEuro } from "@/lib/pricing";
+import { berlinToIso } from "@/lib/format";
 
 const CreateRide = () => {
   const navigate = useNavigate();
@@ -59,11 +60,10 @@ const CreateRide = () => {
     }
     setSubmitting(true);
     try {
-      const departureAt = new Date(`${date}T${time}:00`);
       const { ride_group_id } = await api.createRide({
         route_id: selected.route.id,
         direction: selected.direction,
-        departure_at: departureAt.toISOString(),
+        departure_at: berlinToIso(date, time),
         meeting_point: meetingPoint || undefined,
         seats_total: seats,
         num_persons: persons,

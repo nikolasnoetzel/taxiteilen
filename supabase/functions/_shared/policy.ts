@@ -9,8 +9,14 @@ export const CANCEL_CUTOFF_HOURS = 24;
 export const PAYOUT_DELAY_HOURS = 48;
 /** How long riders get to take over a ride the initiator cancelled (P4). */
 export const TAKEOVER_WINDOW_HOURS = 12;
-/** A pending checkout reserves the seat for this long. */
-export const PENDING_PAYMENT_TTL_MINUTES = 30;
+/**
+ * Checkout session lifetime. Must be > Stripe's 30-minute minimum (clock skew)
+ * and STRICTLY LESS than the DB seat TTL below, so a seat is never resold
+ * while its checkout session can still complete.
+ */
+export const CHECKOUT_SESSION_MINUTES = 35;
+/** A pending checkout reserves the seat in the DB for this long. */
+export const PENDING_PAYMENT_TTL_MINUTES = 45;
 /** Joining/creating requires at least this much lead time before departure. */
 export const MIN_LEAD_TIME_MINUTES = 60;
 /** Strikes until an initiator is blocked (P5). */

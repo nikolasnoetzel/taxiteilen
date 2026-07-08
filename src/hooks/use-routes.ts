@@ -24,7 +24,7 @@ export function useRoutes() {
         .eq("active", true);
       if (error) throw error;
       return (data ?? []).map((r) => {
-        const { hubs, cities, ...route } = r as RouteRow & { hubs: HubRow; cities: CityRow };
+        const { hubs, cities, ...route } = r as unknown as RouteRow & { hubs: HubRow; cities: CityRow };
         return { ...route, hub: hubs, city: cities };
       });
     },

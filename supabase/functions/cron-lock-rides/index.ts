@@ -7,7 +7,7 @@ import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { adminClient, handler, json, requireCronSecret } from "../_shared/http.ts";
 import { stripeClient } from "../_shared/stripe.ts";
 import { CANCEL_CUTOFF_HOURS } from "../_shared/policy.ts";
-import { refundAllGroupPayments } from "../_shared/money.ts";
+import { dissolveGroup } from "../_shared/money.ts";
 import { loadGroup, loadProfiles } from "../_shared/rides.ts";
 import { enqueueEmail, templates } from "../_shared/emails.ts";
 
@@ -30,26 +30,7 @@ serve(handler(async (req) => {
     .eq("status", "initiator_needed")
     .lt("takeover_deadline", nowIso);
   for (const g of lapsed ?? []) {
-    const { emailCtx } = await loadGroup(admin, g.id);
-    const refunded = await refundAllGroupPayments(admin, stripeClient(), g.id);
-    await admin.from("ride_groups")
-      .update({ status: "cancelled", cancel_reason: "takeover_expired" })
-      .eq("id", g.id);
-    const { data: members } = await admin
-      .from("memberships")
-      .select("user_id")
-      .eq("ride_group_id", g.id)
-      .in("status", ["active", "pending_payment"]);
-    await admin.from("memberships")
-      .update({ status: "cancelled_free", cancelled_at: nowIso })
-      .eq("ride_group_id", g.id)
-      .in("status", ["active", "pending_payment"]);
-    const profiles = await loadProfiles(admin, (members ?? []).map((m) => m.user_id));
-    for (const m of members ?? []) {
-      const email = profiles.get(m.user_id)?.email;
-      const amount = refunded.find((p) => p.user_id === m.user_id)?.amount_cents ?? null;
-      if (email) await enqueueEmail(admin, email, templates.ride_dissolved(emailCtx, amount), "ride_dissolved");
-    }
+    await dissolveGroup(admin, stripeClient(), g.id, "takeover_expired");
     results.dissolved++;
   }
 

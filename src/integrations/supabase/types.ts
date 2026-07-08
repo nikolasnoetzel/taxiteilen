@@ -15,7 +15,7 @@ type TableDef<Row> = {
   Relationships: []
 }
 
-export interface ProfileRow {
+export type ProfileRow = {
   id: string
   user_id: string
   full_name: string | null
@@ -31,7 +31,7 @@ export interface ProfileRow {
   updated_at: string
 }
 
-export interface HubRow {
+export type HubRow = {
   id: string
   code: string
   name: string
@@ -40,7 +40,7 @@ export interface HubRow {
   created_at: string
 }
 
-export interface CityRow {
+export type CityRow = {
   id: string
   slug: string
   name: string
@@ -48,7 +48,7 @@ export interface CityRow {
   created_at: string
 }
 
-export interface RouteRow {
+export type RouteRow = {
   id: string
   hub_id: string
   city_id: string
@@ -59,7 +59,7 @@ export interface RouteRow {
   created_at: string
 }
 
-export interface TaxiCompanyRow {
+export type TaxiCompanyRow = {
   id: string
   city_id: string
   name: string
@@ -69,7 +69,7 @@ export interface TaxiCompanyRow {
   created_at: string
 }
 
-export interface RouteTaxiCompanyRow {
+export type RouteTaxiCompanyRow = {
   route_id: string
   taxi_company_id: string
   priority: number
@@ -78,7 +78,7 @@ export interface RouteTaxiCompanyRow {
 export type RideGroupStatus = 'open' | 'initiator_needed' | 'locked' | 'completed' | 'cancelled'
 export type RideDirection = 'to_hub' | 'from_hub'
 
-export interface RideGroupRow {
+export type RideGroupRow = {
   id: string
   route_id: string
   direction: RideDirection
@@ -104,7 +104,7 @@ export type MembershipStatus =
   | 'no_show'
   | 'expired'
 
-export interface MembershipRow {
+export type MembershipRow = {
   id: string
   ride_group_id: string
   user_id: string
@@ -125,7 +125,7 @@ export type PaymentStatus =
   | 'transferred'
   | 'transfer_failed'
 
-export interface PaymentRow {
+export type PaymentRow = {
   id: string
   membership_id: string
   ride_group_id: string
@@ -145,7 +145,7 @@ export interface PaymentRow {
   updated_at: string
 }
 
-export interface TransferRow {
+export type TransferRow = {
   id: string
   payment_id: string
   ride_group_id: string
@@ -156,7 +156,7 @@ export interface TransferRow {
   created_at: string
 }
 
-export interface StrikeRow {
+export type StrikeRow = {
   id: string
   user_id: string
   ride_group_id: string | null
@@ -164,19 +164,19 @@ export interface StrikeRow {
   created_at: string
 }
 
-export interface DisputeRow {
+export type DisputeRow = {
   id: string
   ride_group_id: string
   raised_by: string
   reason: string
-  status: 'open' | 'resolved_refund' | 'resolved_payout'
+  status: 'open' | 'resolved_refund' | 'resolved_payout' | 'resolved_dissolve'
   resolution_note: string | null
   resolved_by: string | null
   resolved_at: string | null
   created_at: string
 }
 
-export interface ChatMessageRow {
+export type ChatMessageRow = {
   id: string
   ride_group_id: string
   user_id: string
@@ -204,10 +204,10 @@ export type Database = {
       disputes: TableDef<DisputeRow>
       chat_messages: TableDef<ChatMessageRow>
     }
-    Views: Record<string, never>
-    Functions: Record<string, never>
-    Enums: Record<string, never>
-    CompositeTypes: Record<string, never>
+    Views: { [_ in never]: never }
+    Functions: { [_ in never]: never }
+    Enums: { [_ in never]: never }
+    CompositeTypes: { [_ in never]: never }
   }
 }
 

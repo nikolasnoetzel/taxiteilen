@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { berlinDayRange } from "@/lib/format";
 import type {
   MembershipRow,
   PaymentRow,
@@ -51,14 +52,17 @@ export function useRideSearch(params: RideSearchParams) {
       if (params.routeId) query = query.eq("route_id", params.routeId);
       if (params.direction) query = query.eq("direction", params.direction);
       if (params.date) {
-        // Interpret the date in local (German) time
-        const start = new Date(`${params.date}T00:00:00`);
-        const end = new Date(start.getTime() + 24 * 3_600_000);
-        query = query.gte("departure_at", start.toISOString()).lt("departure_at", end.toISOString());
+        // A search day always means the German calendar day
+        const { start, end } = berlinDayRange(params.date);
+        query = query.gte("departure_at", start).lt("departure_at", end);
       }
       const { data, error } = await query;
       if (error) throw error;
-      return withSeatCounts(data ?? []);
+      return withSeatCounts(
+        (data ?? []) as unknown as (RideGroupRow & {
+          memberships: Pick<MembershipRow, "num_persons" | "status">[];
+        })[]
+      );
     },
   });
 }
@@ -189,7 +193,7 @@ export function useMyRides() {
       if (error) throw error;
       return (memberships ?? [])
         .map((m) => {
-          const { ride_groups, payments, ...membership } = m as MembershipRow & {
+          const { ride_groups, payments, ...membership } = m as unknown as MembershipRow & {
             ride_groups: RideGroupRow;
             payments: PaymentRow | PaymentRow[] | null;
           };

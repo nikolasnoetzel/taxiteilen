@@ -167,6 +167,15 @@ export const templates = {
     return { subject, html: layout(subject, body), text: `Noch keine Mitfahrer für ${ctx.routeName}. Verwalten: ${ctx.rideUrl}` };
   },
 
+  payout_blocked(ctx: RideEmailContext, amountCents: number): Rendered {
+    const subject = `Auszahlung wartet auf dich: ${ctx.routeName}`;
+    const body =
+      p(`Für deine Fahrt <strong>${ctx.routeName}</strong> am <strong>${ctx.departureLabel}</strong> liegen <strong>${formatEuro(amountCents)}</strong> zur Auszahlung bereit — aber dein Auszahlungskonto ist nicht (mehr) vollständig eingerichtet.`) +
+      p(`Bitte vervollständige dein Stripe-Konto im Dashboard, dann zahlen wir automatisch aus.`) +
+      cta("Zahlungsempfang prüfen", `${SITE_URL}/dashboard`);
+    return { subject, html: layout(subject, body), text: `${formatEuro(amountCents)} warten auf Auszahlung — bitte Stripe-Konto vervollständigen: ${SITE_URL}/dashboard` };
+  },
+
   dispute_opened(ctx: RideEmailContext): Rendered {
     const subject = `Problem gemeldet: ${ctx.routeName}`;
     const body =

@@ -1,15 +1,15 @@
 // Stripe webhook — source of truth for payment state.
 // Register the endpoint for BOTH account and Connect events (docs/stripe-setup.md).
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
-import Stripe from "https://esm.sh/stripe@18.5.0";
+import type Stripe from "https://esm.sh/stripe@18.5.0";
 import { adminClient } from "../_shared/http.ts";
+import { stripeClient } from "../_shared/stripe.ts";
+import { refundPayment, PaymentRow } from "../_shared/money.ts";
 import { loadGroup, loadProfiles, firstName } from "../_shared/rides.ts";
 import { enqueueEmail, templates } from "../_shared/emails.ts";
 
 serve(async (req) => {
-  const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
-    apiVersion: "2025-08-27.basil",
-  });
+  const stripe = stripeClient();
   const signingSecret = Deno.env.get("STRIPE_WEBHOOK_SIGNING_SECRET") || "";
 
   const signature = req.headers.get("stripe-signature");
@@ -53,14 +53,46 @@ serve(async (req) => {
           })
           .eq("id", paymentId)
           .in("status", ["requires_payment", "failed"]) // idempotent
-          .select("user_id, amount_cents")
+          .select("*")
           .maybeSingle();
 
-        await admin
+        const { data: activated } = await admin
           .from("memberships")
           .update({ status: "active", pending_expires_at: null })
           .eq("id", membershipId)
-          .eq("status", "pending_payment");
+          .eq("status", "pending_payment")
+          .select("id")
+          .maybeSingle();
+
+        // Backstop: payment completed after the seat expired, the rider
+        // cancelled, or the ride was dissolved — money without a seat is
+        // always refunded immediately.
+        if (payment && !activated) {
+          const { data: membership } = await admin
+            .from("memberships")
+            .select("status")
+            .eq("id", membershipId)
+            .maybeSingle();
+          if (membership?.status !== "active") {
+            console.warn("Checkout completed without an activatable membership — auto-refunding", {
+              paymentId, membershipId, membershipStatus: membership?.status,
+            });
+            await refundPayment(admin, stripe, payment as PaymentRow);
+            break;
+          }
+        }
+        if (payment) {
+          const { data: groupRow } = await admin
+            .from("ride_groups")
+            .select("status")
+            .eq("id", groupId)
+            .maybeSingle();
+          if (groupRow?.status === "cancelled") {
+            console.warn("Checkout completed for a cancelled ride — auto-refunding", { paymentId, groupId });
+            await refundPayment(admin, stripe, payment as PaymentRow);
+            break;
+          }
+        }
 
         if (payment) {
           const { group, emailCtx } = await loadGroup(admin, groupId);

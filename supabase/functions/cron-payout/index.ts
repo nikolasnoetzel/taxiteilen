@@ -36,16 +36,27 @@ serve(handler(async (req) => {
 
     const profiles = await loadProfiles(admin, [g.initiator_id]);
     const initiator = profiles.get(g.initiator_id);
-    if (!initiator?.stripe_connect_account_id) {
-      console.error("Payout blocked: initiator has no Connect account", { group: g.id });
-      continue;
-    }
 
     const { data: payments } = await admin
       .from("payments")
       .select("*")
       .eq("ride_group_id", g.id)
       .in("status", ["paid", "retained", "transfer_failed"]);
+
+    // Escalate instead of looping forever: onboarding incomplete or account
+    // gone → notify the initiator once, skip until it's fixed.
+    if (!initiator?.stripe_connect_account_id || !initiator.stripe_connect_onboarding_complete) {
+      console.error("Payout blocked: initiator Connect account missing/incomplete", { group: g.id });
+      const { error: alreadyNotified } = await admin
+        .from("ride_group_events")
+        .insert({ ride_group_id: g.id, event: "payout_blocked_notified" });
+      if (!alreadyNotified && initiator?.email) {
+        const owed = (payments ?? []).reduce((sum, p) => sum + p.share_cents, 0);
+        const { emailCtx } = await loadGroup(admin, g.id);
+        await enqueueEmail(admin, initiator.email, templates.payout_blocked(emailCtx, owed), "payout_blocked");
+      }
+      continue;
+    }
 
     let allOk = true;
     let totalTransferred = 0;
