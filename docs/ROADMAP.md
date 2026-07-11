@@ -19,9 +19,21 @@ der Einstiegspunkt für die nächste Arbeits-Session (neuer Chat): erst
 
 ## Offene Punkte (nächste Session)
 
-1. **Deploy & Test-Mode-E2E** (wichtigster nächster Schritt): Lovable-Remix,
-   Secrets setzen, Migration anwenden, Testprotokoll aus `docs/stripe-setup.md`
-   Punkt für Punkt durchspielen (Testkarte 4242…, Refund, Transfer, Takeover).
+1. **Deploy & Test-Mode-E2E** (wichtigster nächster Schritt). Vorarbeit ist erledigt:
+   Die Sandbox-Keys („Taxi Teilen sandbox") liegen lokal in `.env.stripe.local`
+   (git-ignoriert, NIE committen) bzw. sind im Chat-Verlauf; die Netzwerk-Freigabe
+   der Claude-Umgebung wurde von Nikolas erweitert (greift erst in einer neuen Session).
+   Ablauf Session 2:
+   1. `curl https://api.stripe.com/v1/account -u "$STRIPE_SECRET_KEY:"` — Erreichbarkeit prüfen
+      (Key aus `.env.stripe.local`; Datei fehlt nach Container-Neustart → Keys von Nikolas erneut erfragen).
+   2. `set -a; source .env.stripe.local; set +a; node scripts/stripe-bootstrap.mjs`
+      → legt Webhook-Endpoint an, druckt `whsec_…` → in `.env.stripe.local` ergänzen.
+   3. Nikolas hinterlegt `STRIPE_SECRET_KEY` + `STRIPE_WEBHOOK_SIGNING_SECRET` in
+      Lovable Cloud/Supabase (Dashboard-Zugriff hat nur er) und aktiviert Connect
+      in der Sandbox (Marketplace, Express, DE — „Create test account" im Setup-Guide
+      ist unnötig, das macht unsere Onboarding-Function programmatisch).
+   4. Lovable-Remix + Migration anwenden, dann Testprotokoll aus `docs/stripe-setup.md`
+      Punkt für Punkt (Testkarte 4242…, Refund, Retained, Transfer, Takeover, Dispute).
 2. **Review Runde 2:** Zwei Finder-Winkel starben am Session-Limit und sollten
    nachgeholt werden: (a) „removed behavior" (v1→v2-Diff auf verlorene Invarianten),
    (b) „cross-file contracts" (api.ts ↔ Edge Functions ↔ Migration ↔ RLS,
