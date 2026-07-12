@@ -23,7 +23,7 @@ const EVENTS = [
   "account.updated",
 ];
 
-const key = process.env.STRIPE_SECRET_KEY;
+const key = process.env.STRIPE_SECRET_KEY || process.env.STRIPE_TEST_API_KEY;
 if (!key) {
   console.error("STRIPE_SECRET_KEY is not set. Run: STRIPE_SECRET_KEY=sk_... node scripts/stripe-bootstrap.mjs");
   process.exit(1);
