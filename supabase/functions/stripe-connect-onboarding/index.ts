@@ -24,7 +24,7 @@ serve(async (req) => {
     const { data: { user } } = await supabaseClient.auth.getUser(token);
     if (!user) throw new Error("Not authenticated");
 
-    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || "", {
+    const stripe = new Stripe(Deno.env.get("STRIPE_SECRET_KEY") || Deno.env.get("STRIPE_TEST_API_KEY") || "", {
       apiVersion: "2025-08-27.basil",
     });
 
