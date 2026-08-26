@@ -1,14 +1,13 @@
+// Gruppen-Chat: Nachrichten einer Fahrtgruppe + Realtime-Updates.
+// Client-seitiger INSERT ist bewusst erlaubt — die RLS-Policy beschränkt
+// Lesen und Schreiben auf Gruppenmitglieder (Migration v2, chat_messages).
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import type { ChatMessageRow } from "@/integrations/supabase/types";
 
-export type ChatMessage = {
-  id: string;
-  ride_group_id: string;
-  user_id: string;
-  message: string;
-  created_at: string;
+export type ChatMessage = ChatMessageRow & {
   profile?: { full_name: string | null };
 };
 
@@ -18,7 +17,7 @@ export function useChatMessages(rideGroupId: string | null) {
   const query = useQuery({
     queryKey: ["chat-messages", rideGroupId],
     enabled: !!rideGroupId,
-    queryFn: async () => {
+    queryFn: async (): Promise<ChatMessage[]> => {
       if (!rideGroupId) return [];
 
       const { data, error } = await supabase
@@ -28,24 +27,23 @@ export function useChatMessages(rideGroupId: string | null) {
         .order("created_at", { ascending: true });
 
       if (error) throw error;
+      const messages = (data ?? []) as ChatMessageRow[];
+      if (messages.length === 0) return [];
 
-      // Fetch profile names
-      const userIds = [...new Set((data || []).map((m: any) => m.user_id))];
-      if (userIds.length === 0) return [];
-
+      const userIds = [...new Set(messages.map((m) => m.user_id))];
       const { data: profiles } = await supabase
         .from("profiles")
         .select("user_id, full_name")
         .in("user_id", userIds);
 
       const profileMap = new Map(
-        (profiles || []).map((p) => [p.user_id, p.full_name])
+        (profiles ?? []).map((p) => [p.user_id, p.full_name])
       );
 
-      return (data || []).map((m: any) => ({
+      return messages.map((m) => ({
         ...m,
         profile: { full_name: profileMap.get(m.user_id) ?? null },
-      })) as ChatMessage[];
+      }));
     },
   });
 
@@ -88,7 +86,7 @@ export function useSendMessage(rideGroupId: string | null) {
         ride_group_id: rideGroupId,
         user_id: user.id,
         message,
-      } as any);
+      });
 
       if (error) throw error;
     },

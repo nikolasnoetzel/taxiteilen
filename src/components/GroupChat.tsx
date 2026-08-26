@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { MessageCircle, Send, ExternalLink, ChevronDown, ChevronUp } from "lucide-react";
+import { toast } from "sonner";
 import { useChatMessages, useSendMessage } from "@/hooks/use-chat";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -27,8 +28,14 @@ const GroupChat = ({ rideGroupId, routeName }: GroupChatProps) => {
   const handleSend = () => {
     const trimmed = input.trim();
     if (!trimmed) return;
-    sendMessage.mutate(trimmed);
     setInput("");
+    sendMessage.mutate(trimmed, {
+      onError: () => {
+        // Nachricht nicht still verlieren: Eingabe wiederherstellen + Feedback
+        setInput(trimmed);
+        toast.error("Nachricht konnte nicht gesendet werden. Bitte versuch es erneut.");
+      },
+    });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
