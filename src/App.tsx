@@ -8,6 +8,7 @@ import SearchResults from "./pages/SearchResults.tsx";
 import CreateRide from "./pages/CreateRide.tsx";
 import RideDetail from "./pages/RideDetail.tsx";
 import Dashboard from "./pages/Dashboard.tsx";
+import Admin from "./pages/Admin.tsx";
 import Datenschutz from "./pages/Datenschutz.tsx";
 import Impressum from "./pages/Impressum.tsx";
 import AGB from "./pages/AGB.tsx";
@@ -31,6 +32,7 @@ const App = () => (
             <Route path="/fahrt-erstellen" element={<CreateRide />} />
             <Route path="/fahrt/:id" element={<RideDetail />} />
             <Route path="/dashboard" element={<Dashboard />} />
+            <Route path="/admin" element={<Admin />} />
             <Route path="/datenschutz" element={<Datenschutz />} />
             <Route path="/agb" element={<AGB />} />
             <Route path="/impressum" element={<Impressum />} />

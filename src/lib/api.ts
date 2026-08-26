@@ -23,7 +23,30 @@ const ERROR_MESSAGES: Record<string, string> = {
   window_closed: "Das Zeitfenster dafür ist abgelaufen.",
   dispute_already_open: "Du hast bereits ein Problem gemeldet.",
   payout_already_done: "Die Auszahlung ist bereits erfolgt.",
+  dispute_not_found: "Dieser Fall ist bereits entschieden oder existiert nicht.",
+  forbidden: "Dafür fehlt dir die Berechtigung.",
 };
+
+export interface AdminDispute {
+  dispute: {
+    id: string;
+    ride_group_id: string;
+    raised_by: string;
+    reason: string;
+    status: string;
+    created_at: string;
+  };
+  group: {
+    id: string;
+    departure_at: string;
+    status: string;
+    payout_due_at: string;
+    initiator_id: string;
+  } | null;
+  routeName: string;
+  reporter: { name: string | null; email: string | null; is_initiator: boolean } | null;
+  payments: { user_id: string; amount_cents: number; share_cents: number; status: string }[];
+}
 
 async function invoke<T>(fn: string, body: Record<string, unknown>): Promise<T> {
   const { data, error } = await supabase.functions.invoke(fn, { body });
@@ -77,6 +100,16 @@ export const api = {
 
   openDispute: (ride_group_id: string, reason: string) =>
     invoke<{ dispute_id: string }>("open-dispute", { ride_group_id, reason }),
+
+  adminListDisputes: () =>
+    invoke<{ disputes: AdminDispute[] }>("admin-list-disputes", {}),
+
+  resolveDispute: (input: {
+    dispute_id: string;
+    resolution: "resolved_refund" | "resolved_payout" | "resolved_dissolve";
+    note?: string;
+    strike_initiator?: boolean;
+  }) => invoke<{ status: string }>("resolve-dispute", input),
 
   connectStatus: () =>
     invoke<{ onboarded: boolean; has_account: boolean }>("stripe-connect-status", {}),
