@@ -41,20 +41,31 @@ Deno.serve(async (req) => {
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
 
   // Auth: verify_jwt = false in config.toml, so the gateway lets everyone in.
-  // Accept only (a) the service-role key as Bearer or (b) the pg_cron secret
-  // from app_settings (sent by invoke_edge_function as x-cron-secret).
+  // Accept (a) the service-role key as Bearer or (b) the pg_cron secret from
+  // app_settings (sent by invoke_edge_function as x-cron-secret).
+  // Functions deploy from git BEFORE migrations run: on a pre-v2 database
+  // app_settings does not exist yet — then we must NOT lock out the legacy
+  // invoker (auth emails would silently stop), so the guard arms itself only
+  // once the table is queryable. A missing/mismatched secret row on a v2
+  // database stays a hard 403.
   const authz = req.headers.get('Authorization') ?? ''
   let authorized = authz === `Bearer ${supabaseServiceKey}`
   if (!authorized) {
-    const { data: secretRow } = await supabase
+    const { data: secretRow, error: secretError } = await supabase
       .from('app_settings')
       .select('value')
       .eq('key', 'cron_secret')
       .maybeSingle()
-    const expected = secretRow?.value as string | undefined
-    authorized = !!expected && req.headers.get('x-cron-secret') === expected
+    if (secretError) {
+      console.warn('cron-secret guard not armable (pre-v2 schema?) — allowing request', secretError.message)
+      authorized = true
+    } else {
+      const expected = secretRow?.value as string | undefined
+      authorized = !!expected && req.headers.get('x-cron-secret') === expected
+    }
   }
   if (!authorized) {
+    console.warn('process-email-queue: rejected caller without valid credentials')
     return new Response(JSON.stringify({ error: 'Forbidden' }), {
       status: 403,
       headers: { 'Content-Type': 'application/json' },

@@ -3,6 +3,7 @@ import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
+import TermsGate from "@/components/TermsGate";
 import Index from "./pages/Index.tsx";
 import SearchResults from "./pages/SearchResults.tsx";
 import CreateRide from "./pages/CreateRide.tsx";
@@ -25,6 +26,7 @@ const App = () => (
       <Sonner position="top-center" />
       <BrowserRouter>
         <AuthProvider>
+          <TermsGate />
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/suche" element={<SearchResults />} />

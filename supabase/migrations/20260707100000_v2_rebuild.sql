@@ -500,11 +500,12 @@ DO $$ BEGIN
     $cmd$SELECT public.invoke_edge_function('cron-payout')$cmd$);
   PERFORM cron.schedule('taxiteilen-reminders', '7 * * * *',
     $cmd$SELECT public.invoke_edge_function('cron-reminders')$cmd$);
-  -- Drive the email queue unless something already does
-  IF NOT EXISTS (SELECT 1 FROM cron.job WHERE command ILIKE '%process-email-queue%') THEN
-    PERFORM cron.schedule('taxiteilen-email-queue', '* * * * *',
-      $cmd$SELECT public.invoke_edge_function('process-email-queue')$cmd$);
-  END IF;
+  -- Drive the email queue: REPLACE any legacy job — a pre-v2 invoker sends
+  -- no x-cron-secret and would run into the function's 403 forever.
+  PERFORM cron.unschedule(jobname)
+    FROM cron.job WHERE command ILIKE '%process-email-queue%';
+  PERFORM cron.schedule('taxiteilen-email-queue', '* * * * *',
+    $cmd$SELECT public.invoke_edge_function('process-email-queue')$cmd$);
 EXCEPTION WHEN OTHERS THEN
   RAISE WARNING 'cron scheduling skipped: %', SQLERRM;
 END $$;
