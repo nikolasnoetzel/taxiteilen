@@ -11,6 +11,11 @@ export default defineConfig({
     include: ["src/**/*.{test,spec}.{ts,tsx}"],
   },
   resolve: {
-    alias: { "@": path.resolve(__dirname, "./src") },
+    alias: {
+      "@": path.resolve(__dirname, "./src"),
+      // Die Edge-Function-Module nutzen Deno-Spezifizierer; für Tests auf das
+      // installierte npm-Paket mappen.
+      "npm:@supabase/supabase-js@2.57.2": "@supabase/supabase-js",
+    },
   },
 });
