@@ -56,6 +56,27 @@ serve(async (req) => {
           .select("*")
           .maybeSingle();
 
+        // Backstop: a SECOND completed session for the same payment (e.g. an
+        // old checkout tab from the retry path, or completion after a refund)
+        // must never silently keep the extra money.
+        if (!payment && piId) {
+          const { data: existingPayment } = await admin
+            .from("payments")
+            .select("id, status, stripe_payment_intent_id")
+            .eq("id", paymentId)
+            .maybeSingle();
+          if (existingPayment && existingPayment.stripe_payment_intent_id !== piId) {
+            console.warn("Duplicate checkout completion — refunding the extra charge", {
+              paymentId, duplicateIntent: piId, keptIntent: existingPayment.stripe_payment_intent_id,
+            });
+            await stripe.refunds.create(
+              { payment_intent: piId },
+              { idempotencyKey: `dup-refund-${piId}` }
+            );
+            break;
+          }
+        }
+
         const { data: activated } = await admin
           .from("memberships")
           .update({ status: "active", pending_expires_at: null })

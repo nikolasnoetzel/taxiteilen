@@ -21,6 +21,11 @@ serve(handler(async (req) => {
   const { group, emailCtx } = await loadGroup(admin, ride_group_id);
   if (group.initiator_id !== user.id) throw new ApiError("not_initiator", 403);
   if (!["open", "locked"].includes(group.status)) throw new ApiError("group_not_cancellable", 409);
+  // After departure a "cancellation" would refund riders although the ride
+  // happened — the post-departure tools are mark-no-show and open-dispute.
+  if (new Date(group.departure_at).getTime() <= Date.now()) {
+    throw new ApiError("group_not_cancellable", 409);
+  }
 
   // "Money exists" must consider retained payments of late cancellers /
   // no-shows too — an initiator who cancels does not get to keep them.

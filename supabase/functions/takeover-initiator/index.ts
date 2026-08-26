@@ -38,6 +38,24 @@ serve(handler(async (req) => {
     .maybeSingle();
   if (!membership) throw new ApiError("not_a_member", 403);
 
+  // Atomically claim the group FIRST — the status guard makes sure exactly
+  // one concurrent taker wins; the loser must not get a refund or the role.
+  const backToLocked = hoursToDeparture(group.departure_at) < CANCEL_CUTOFF_HOURS;
+  const { data: claimed } = await admin.from("ride_groups")
+    .update({
+      initiator_id: user.id,
+      status: backToLocked ? "locked" : "open",
+      takeover_deadline: null,
+      ...(backToLocked ? { locked_at: new Date().toISOString() } : {}),
+    })
+    .eq("id", ride_group_id)
+    .eq("status", "initiator_needed")
+    .select("id")
+    .maybeSingle();
+  if (!claimed) throw new ApiError("no_takeover_open", 409);
+
+  await admin.from("memberships").update({ role: "initiator" }).eq("id", membership.id);
+
   // Refund the new initiator's own payment — initiators don't pay a share.
   const { data: payment } = await admin
     .from("payments")
@@ -47,17 +65,6 @@ serve(handler(async (req) => {
   if (payment && ["paid", "retained"].includes(payment.status)) {
     await refundPayment(admin, stripeClient(), payment as PaymentRow);
   }
-
-  const backToLocked = hoursToDeparture(group.departure_at) < CANCEL_CUTOFF_HOURS;
-  await admin.from("memberships").update({ role: "initiator" }).eq("id", membership.id);
-  await admin.from("ride_groups")
-    .update({
-      initiator_id: user.id,
-      status: backToLocked ? "locked" : "open",
-      takeover_deadline: null,
-      ...(backToLocked ? { locked_at: new Date().toISOString() } : {}),
-    })
-    .eq("id", ride_group_id);
 
   return json({ status: backToLocked ? "locked" : "open", initiator_id: user.id });
 }));

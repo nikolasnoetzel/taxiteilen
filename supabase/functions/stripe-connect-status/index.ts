@@ -47,13 +47,17 @@ serve(async (req) => {
     });
 
     const account = await stripe.accounts.retrieve(profile.stripe_connect_account_id);
-    const isComplete = account.details_submitted && account.charges_enabled;
+    // Same predicate as the account.updated webhook — payouts_enabled matters,
+    // because cron-payout transfers to this account (transfer would fail).
+    const isComplete = Boolean(
+      account.details_submitted && account.charges_enabled && account.payouts_enabled
+    );
 
-    // Update profile if onboarding just completed
-    if (isComplete && !profile.stripe_connect_onboarding_complete) {
+    // Mirror the current state in both directions (webhook does the same)
+    if (isComplete !== profile.stripe_connect_onboarding_complete) {
       await supabaseAdmin
         .from("profiles")
-        .update({ stripe_connect_onboarding_complete: true })
+        .update({ stripe_connect_onboarding_complete: isComplete })
         .eq("user_id", user.id);
     }
 
@@ -63,6 +67,7 @@ serve(async (req) => {
         has_account: true,
         details_submitted: account.details_submitted,
         charges_enabled: account.charges_enabled,
+        payouts_enabled: account.payouts_enabled,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );

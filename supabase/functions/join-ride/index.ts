@@ -29,7 +29,7 @@ serve(handler(async (req) => {
   // Retry path: an unpaid reservation already exists → reuse it with a fresh session
   const { data: existing } = await admin
     .from("memberships")
-    .select("id, num_persons, payments(id, status, amount_cents, share_cents, fee_cents)")
+    .select("id, num_persons, payments(id, status, amount_cents, share_cents, fee_cents, stripe_checkout_session_id)")
     .eq("ride_group_id", ride_group_id)
     .eq("user_id", user.id)
     .eq("status", "pending_payment")
@@ -41,11 +41,21 @@ serve(handler(async (req) => {
   let productPersons: number;
 
   if (existing && (existing.payments as { status?: string } | null)?.status === "requires_payment") {
-    const payment = existing.payments as { id: string; amount_cents: number };
+    const payment = existing.payments as { id: string; amount_cents: number; stripe_checkout_session_id: string | null };
     membershipId = existing.id;
     paymentId = payment.id;
     amountCents = payment.amount_cents;
     productPersons = existing.num_persons;
+    // The old session must die before a new one exists — otherwise both are
+    // payable and a second tab can double-charge (webhook backstop refunds
+    // duplicates, but not opening the window at all is better).
+    if (payment.stripe_checkout_session_id) {
+      try {
+        await stripe.checkout.sessions.expire(payment.stripe_checkout_session_id);
+      } catch (_err) {
+        // already completed or expired — the webhook handles the completed case
+      }
+    }
     // Extend the seat reservation to cover the new session lifetime
     await admin
       .from("memberships")
@@ -128,13 +138,27 @@ serve(handler(async (req) => {
     cancel_url: `${origin}/fahrt/${ride_group_id}?payment=cancelled`,
   });
 
-  await admin
+  // Guard on status: if the webhook marked this payment paid in the meantime
+  // (old-session race), never overwrite its session/intent ids …
+  const { data: linked } = await admin
     .from("payments")
     .update({
       stripe_checkout_session_id: session.id,
       stripe_payment_intent_id: (session.payment_intent as string) ?? null,
     })
-    .eq("id", paymentId);
+    .eq("id", paymentId)
+    .eq("status", "requires_payment")
+    .select("id")
+    .maybeSingle();
+  // … and kill the fresh session: the seat is already paid.
+  if (!linked) {
+    try {
+      await stripe.checkout.sessions.expire(session.id);
+    } catch (_err) {
+      // completed in the same instant — the webhook's duplicate backstop refunds it
+    }
+    throw new ApiError("already_member", 409);
+  }
 
   return json({ url: session.url });
 }));
