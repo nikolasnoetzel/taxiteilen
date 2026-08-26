@@ -11,7 +11,10 @@ Stornos sind einfache Refunds, solange nicht ausgezahlt wurde.
 ## Einmaliges Setup (Sandbox/Test-Mode zuerst!)
 
 1. **Secrets in Supabase/Lovable Cloud setzen** (nie in Chat/Git):
-   - `STRIPE_SECRET_KEY` = `sk_test_…` (Sandbox „Taxi Teilen sandbox")
+   - `STRIPE_SECRET_KEY` = `sk_test_…` (Sandbox „Taxi Teilen sandbox").
+     Hinweis: Lovables eigene Stripe-Integration legt den Key ggf. unter dem
+     Namen `STRIPE_TEST_API_KEY` ab — Functions und Bootstrap-Script
+     akzeptieren beide Namen.
    - `STRIPE_WEBHOOK_SIGNING_SECRET` = kommt aus Schritt 3
 2. **Connect aktivieren** (Dashboard → Connect → Get started):
    Plattform-Typ **Marketplace**, Accounts **Express**, Land **DE**.
@@ -32,6 +35,12 @@ Stornos sind einfache Refunds, solange nicht ausgezahlt wurde.
    aktivieren (für `account.updated`).*
 4. **Auszahlungsplan** der Connected Accounts: Standard (täglich automatisch)
    belassen.
+5. **Zahlungsmethoden prüfen** (Settings → Payment methods): Nur Karte /
+   Apple Pay / Google Pay. **SEPA-Lastschrift muss deaktiviert bleiben**
+   (8-Wochen-Rückbuchungsrecht kollidiert mit dem Einbehalt, siehe
+   `docs/policies.md`). Der Checkout pinnt zwar `payment_method_types: card`,
+   aber die Dashboard-Einstellung ist die zweite Verteidigungslinie —
+   Stripe aktiviert neue Methoden sonst teils automatisch.
 
 ## Nach einem Lovable-Remix (neues Supabase-Projekt)
 
@@ -59,7 +68,7 @@ Testkarte: `4242 4242 4242 4242`, beliebiges Zukunftsdatum, beliebiger CVC.
 | 6 | Zeit weiterstellen: `departure_at` in Vergangenheit, `payout_due_at < now()`, Gruppe `locked` | Nächster `cron-payout`-Lauf: Transfer über B's Anteil an A's Express-Account (Stripe → Connect → Transfers), Gruppe `completed`, Payout-E-Mail an A |
 | 7 | Dispute-Pfad: vor Payout `open-dispute` als B | Payout pausiert; nach `resolve-dispute` (`resolved_refund`) bekommt B Geld zurück |
 | 8 | Initiator-Storno ≥24 h (P4) | Gruppe `initiator_needed`, Takeover-Mail an B; B übernimmt → B's Payment refunded, B ist Initiator |
-| 9 | Checkout abbrechen / 30 min warten | Membership `expired`, Platz frei (`checkout.session.expired`) |
+| 9 | Checkout abbrechen / 35 min warten (Session-Lifetime, siehe `policy.ts`) | Membership `expired`, Platz frei (`checkout.session.expired`) |
 
 Zeitreisen für Tests (SQL-Editor):
 ```sql

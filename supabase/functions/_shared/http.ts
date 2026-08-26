@@ -42,8 +42,9 @@ export async function requireUser(req: Request) {
 /** Cron endpoints (verify_jwt=false) authenticate via the shared secret in app_settings. */
 export async function requireCronSecret(req: Request, admin: SupabaseClient) {
   const { data } = await admin.from("app_settings").select("value").eq("key", "cron_secret").single();
+  // Fail closed: a missing cron_secret row must block, not bypass, the check.
   const expected = data?.value as string | undefined;
-  if (expected && req.headers.get("x-cron-secret") !== expected) {
+  if (!expected || req.headers.get("x-cron-secret") !== expected) {
     throw new ApiError("forbidden", 403);
   }
 }

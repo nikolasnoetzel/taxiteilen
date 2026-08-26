@@ -45,24 +45,18 @@ const Auth = () => {
           setLoading(false);
           return;
         }
+        // terms_accepted_at/phone reisen als Metadaten mit und werden vom
+        // handle_new_user-Trigger persistiert — ein Client-Update nach signUp
+        // schlägt bei aktivierter E-Mail-Bestätigung fehl (noch keine Session).
         const { error } = await supabase.auth.signUp({
           email,
           password,
           options: {
             emailRedirectTo: window.location.origin,
-            data: { full_name: fullName, phone },
+            data: { full_name: fullName, phone, terms_accepted_at: new Date().toISOString() },
           },
         });
         if (error) throw error;
-
-        // Update profile with terms_accepted_at and phone
-        const { data: { user } } = await supabase.auth.getUser();
-        if (user) {
-          await supabase.from("profiles").update({
-            terms_accepted_at: new Date().toISOString(),
-            phone,
-          }).eq("user_id", user.id);
-        }
 
         toast.success("Konto erstellt! Bitte bestätige deine E-Mail.");
       }

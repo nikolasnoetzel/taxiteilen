@@ -17,7 +17,13 @@ Unit-Tests abgesichert (`src/test/policy.test.ts`, `src/test/pricing.test.ts`).
 
 ## Preis & Gebühren
 
+- **Voraussetzung fürs Erstellen (und für Takeover, P4):** eingerichteter
+  Zahlungsempfang — `stripe_connect_account_id` gesetzt **und** Onboarding
+  abgeschlossen. Ohne beides lehnen `create-ride`/`takeover-initiator` ab
+  (`connect_onboarding_required`).
 - Jede Strecke hat einen **Festpreis** (Tabelle `routes`, siehe `docs/routes.md`).
+- Angebotene Plätze pro Fahrt: **2–8** (DB-Constraint); der Initiator kann
+  1 bis (Plätze−1) davon selbst belegen.
 - **Sitzpreis** = Festpreis ÷ Gesamtplätze, bei Fahrt-Erstellung eingefroren
   (Rundungsrest trägt der Initiator).
 - Mitfahrer zahlt **Anteil + 15 % Servicegebühr**. Der Initiator erhält den
@@ -52,6 +58,17 @@ Auflösen/Stornieren aktiv beendet; zahlt jemand dennoch „zu spät" (Race), er
 Stripe-Webhook automatisch (Backstop: Geld ohne Sitzplatz wird immer sofort refundiert).
 Ein Strike für den Initiator (P5) gibt es nur, wenn zum Absagezeitpunkt <24 h aktive,
 bezahlte Mitfahrer betroffen waren.
+
+### Blockierte Auszahlung (`payout_blocked`)
+
+Fehlt zum Auszahlungszeitpunkt das Connect-Konto des Initiators oder ist es
+unvollständig (z. B. nachträglich von Stripe eingeschränkt), überspringt
+`cron-payout` die Gruppe und schickt dem Initiator **einmalig** eine
+`payout_blocked`-Mail. Die Anteile bleiben auf dem Plattform-Konto liegen,
+bis das Konto repariert ist — der Cron holt die Auszahlung dann automatisch
+nach. Meldet sich der Initiator nicht, bleibt das Geld unbegrenzt geparkt;
+Eskalation (z. B. Rückerstattung an die Mitfahrer nach X Wochen) ist eine
+bewusst offene Admin-Entscheidung über `resolve-dispute`.
 
 ### Feste Parameter (in `policy.ts`)
 

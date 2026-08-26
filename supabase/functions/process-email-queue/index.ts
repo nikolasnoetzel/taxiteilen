@@ -38,10 +38,28 @@ Deno.serve(async (req) => {
     )
   }
 
-  // Auth: verify_jwt = true in config.toml — Supabase gateway validates the
-  // service role JWT from the pg_cron Authorization header before this runs.
-
   const supabase = createClient(supabaseUrl, supabaseServiceKey)
+
+  // Auth: verify_jwt = false in config.toml, so the gateway lets everyone in.
+  // Accept only (a) the service-role key as Bearer or (b) the pg_cron secret
+  // from app_settings (sent by invoke_edge_function as x-cron-secret).
+  const authz = req.headers.get('Authorization') ?? ''
+  let authorized = authz === `Bearer ${supabaseServiceKey}`
+  if (!authorized) {
+    const { data: secretRow } = await supabase
+      .from('app_settings')
+      .select('value')
+      .eq('key', 'cron_secret')
+      .maybeSingle()
+    const expected = secretRow?.value as string | undefined
+    authorized = !!expected && req.headers.get('x-cron-secret') === expected
+  }
+  if (!authorized) {
+    return new Response(JSON.stringify({ error: 'Forbidden' }), {
+      status: 403,
+      headers: { 'Content-Type': 'application/json' },
+    })
+  }
 
   // 1. Check rate-limit cooldown and read queue config
   const { data: state } = await supabase

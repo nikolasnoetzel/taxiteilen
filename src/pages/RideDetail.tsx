@@ -61,7 +61,7 @@ const RideDetail = () => {
       toast.success("Zahlung erfolgreich — du bist dabei! Bestätigung kommt per E-Mail.");
       queryClient.invalidateQueries({ queryKey: ["ride-detail", id] });
     } else if (payment === "cancelled") {
-      toast.info("Zahlung abgebrochen. Dein Platz ist noch 30 Minuten reserviert.");
+      toast.info("Zahlung abgebrochen. Dein Platz bleibt noch kurze Zeit reserviert — du kannst die Zahlung direkt erneut starten.");
     }
     if (payment) {
       params.delete("payment");
