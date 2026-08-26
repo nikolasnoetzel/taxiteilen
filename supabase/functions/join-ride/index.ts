@@ -117,7 +117,7 @@ serve(handler(async (req) => {
           currency: "eur",
           product_data: {
             name: `TaxiTeilen — ${routeName}`,
-            description: `Fester Anteil für ${productPersons} Person${productPersons > 1 ? "en" : ""} inkl. 20% Servicegebühr. Kostenlose Stornierung bis 24h vor Abfahrt.`,
+            description: `Fester Anteil für ${productPersons} Person${productPersons > 1 ? "en" : ""} inkl. 15% Servicegebühr. Kostenlose Stornierung bis 24h vor Abfahrt.`,
           },
           unit_amount: amountCents,
         },

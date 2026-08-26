@@ -237,7 +237,7 @@ const CreateRide = () => {
                   </div>
                   <p className="flex items-start gap-2 text-xs leading-relaxed text-muted-foreground">
                     <Info className="mt-0.5 h-3.5 w-3.5 shrink-0" />
-                    Mitfahrer zahlen ihren Anteil + 20 % Servicegebühr. Die Auszahlung
+                    Mitfahrer zahlen ihren Anteil + 15 % Servicegebühr. Die Auszahlung
                     an dich erfolgt automatisch 48 Stunden nach der Fahrt. Du zahlst
                     den Taxifahrer direkt.
                   </p>

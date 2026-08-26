@@ -5,7 +5,7 @@ auf festen Strecken (v1-Korridore: Kiel↔HAM, München↔MUC, Frankfurt↔FRA,
 Düsseldorf↔DUS).
 
 Ein **Initiator** legt eine Fahrt an, bestellt das Taxi telefonisch und zahlt
-den Fahrer. **Mitfahrer** zahlen ihren festen Anteil + 20 % Servicegebühr
+den Fahrer. **Mitfahrer** zahlen ihren festen Anteil + 15 % Servicegebühr
 sofort per Stripe Checkout; das Geld liegt treuhänderisch auf dem
 Plattform-Konto und wird 48 h nach der Fahrt automatisch an den Initiator
 ausgezahlt (Stripe Connect Express, Separate Charges & Transfers).

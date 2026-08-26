@@ -56,7 +56,7 @@ der Einstiegspunkt für die nächste Arbeits-Session (neuer Chat): erst
 ## Betriebs-Wissen in Kürze
 
 - Geld-Regeln: `docs/policies.md` (P1–P8 + Auflösungs-Regel). Code-Quellen:
-  `_shared/pricing.ts` (20 %), `_shared/policy.ts` (Fristen), `_shared/money.ts`
+  `_shared/pricing.ts` (15 %), `_shared/policy.ts` (Fristen), `_shared/money.ts`
   (refund/transfer/dissolve — NUR hierüber Geld bewegen).
 - Nach Lovable-Remix: `docs/stripe-setup.md` Abschnitt „Nach einem Lovable-Remix"
   (Secrets, `app_settings.edge_base_url`, Webhook, cron.job prüfen).

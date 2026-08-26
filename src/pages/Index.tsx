@@ -149,7 +149,7 @@ const Index = () => {
               {
                 icon: HandCoins,
                 title: "Festen Anteil zahlen",
-                text: "Fester Streckenpreis, fair geteilt. Mitfahrer zahlen ihren Anteil plus 20 % Servicegebühr sicher per Karte — das Geld bleibt bis nach der Fahrt bei uns.",
+                text: "Fester Streckenpreis, fair geteilt. Mitfahrer zahlen ihren Anteil plus 15 % Servicegebühr sicher per Karte — das Geld bleibt bis nach der Fahrt bei uns.",
               },
               {
                 icon: PhoneCall,
@@ -226,7 +226,7 @@ const Index = () => {
               {[
                 [
                   "Wie wird der Preis berechnet?",
-                  "Jede Strecke hat einen festen Gesamtpreis (z. B. Kiel ↔ Hamburg Airport: 150 €). Dieser wird durch die Anzahl der Plätze geteilt. Mitfahrer zahlen ihren Anteil plus 20 % Servicegebühr — der Initiator zahlt das Taxi und erhält die Anteile automatisch ausgezahlt.",
+                  "Jede Strecke hat einen festen Gesamtpreis (z. B. Kiel ↔ Hamburg Airport: 150 €). Dieser wird durch die Anzahl der Plätze geteilt. Mitfahrer zahlen ihren Anteil plus 15 % Servicegebühr — der Initiator zahlt das Taxi und erhält die Anteile automatisch ausgezahlt.",
                 ],
                 [
                   "Was passiert, wenn ich stornieren muss?",

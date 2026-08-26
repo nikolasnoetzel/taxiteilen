@@ -4,10 +4,10 @@
 // Semantics (docs/policies.md):
 // - Every route has a fixed total price. The seat price is frozen when a ride
 //   is created: fixed_price / seats_total (initiator absorbs the rounding).
-// - A rider pays share + 20% platform fee. The initiator receives the full
+// - A rider pays share + 15% platform fee. The initiator receives the full
 //   share on payout; the platform keeps the fee.
 
-export const PLATFORM_FEE_PERCENT = 20;
+export const PLATFORM_FEE_PERCENT = 15;
 export const CURRENCY = "eur";
 
 export function seatPriceCents(fixedPriceCents: number, seatsTotal: number): number {

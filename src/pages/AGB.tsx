@@ -51,9 +51,9 @@ const AGB = () => {
 
             <section className="space-y-4">
               <h2 className="font-display text-xl font-bold text-foreground">§ 5 Festpreis, Kostenaufteilung und Servicegebühr</h2>
-              <p>Jede Strecke hat einen von TaxiTeilen festgelegten Festpreis. Der Anteil pro Platz ergibt sich aus dem Festpreis geteilt durch die Anzahl der angebotenen Plätze und wird bei Erstellung der Fahrt fixiert. Mitfahrende zahlen ihren Anteil zuzüglich einer Servicegebühr von 20 % auf den Anteil. Der Initiator erhält den vollen Anteil; die Servicegebühr verbleibt bei TaxiTeilen.</p>
+              <p>Jede Strecke hat einen von TaxiTeilen festgelegten Festpreis. Der Anteil pro Platz ergibt sich aus dem Festpreis geteilt durch die Anzahl der angebotenen Plätze und wird bei Erstellung der Fahrt fixiert. Mitfahrende zahlen ihren Anteil zuzüglich einer Servicegebühr von 15 % auf den Anteil. Der Initiator erhält den vollen Anteil; die Servicegebühr verbleibt bei TaxiTeilen.</p>
               <div className="rounded-lg border border-border bg-card p-4">
-                <p className="text-sm"><strong>Beispiel:</strong> Strecke mit Festpreis 120 €, 4 Plätze → Anteil 30 € pro Platz. Ein Mitfahrender zahlt 36 € (30 € Anteil + 6 € Servicegebühr). Der Initiator zahlt das Taxi (120 €) und erhält je Mitfahrenden 30 € ausgezahlt.</p>
+                <p className="text-sm"><strong>Beispiel:</strong> Strecke mit Festpreis 120 €, 4 Plätze → Anteil 30 € pro Platz. Ein Mitfahrender zahlt 34,50 € (30 € Anteil + 4,50 € Servicegebühr). Der Initiator zahlt das Taxi (120 €) und erhält je Mitfahrenden 30 € ausgezahlt.</p>
               </div>
               <p>Der Anteil pro Platz richtet sich nach den angebotenen Plätzen, nicht nach der tatsächlichen Belegung. Weicht der Taxameterpreis vom Festpreis ab, geht dies zu Lasten bzw. zu Gunsten des Initiators.</p>
               <p>Die Zahlung erfolgt über Stripe (Karte, Apple Pay, Google Pay). Die Beträge werden bis zur Auszahlung an den Initiator treuhänderisch auf dem Stripe-Konto der Plattform gehalten. TaxiTeilen ist kein Zahlungsdienstleister im Sinne des Zahlungsdiensteaufsichtsgesetzes (ZAG), da die Zahlungsabwicklung ausschließlich durch Stripe als lizenziertem Zahlungsdienstleister erfolgt.</p>

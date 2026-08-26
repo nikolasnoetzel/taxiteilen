@@ -20,17 +20,17 @@ Unit-Tests abgesichert (`src/test/policy.test.ts`, `src/test/pricing.test.ts`).
 - Jede Strecke hat einen **Festpreis** (Tabelle `routes`, siehe `docs/routes.md`).
 - **Sitzpreis** = Festpreis ÷ Gesamtplätze, bei Fahrt-Erstellung eingefroren
   (Rundungsrest trägt der Initiator).
-- Mitfahrer zahlt **Anteil + 20 % Servicegebühr**. Der Initiator erhält den
+- Mitfahrer zahlt **Anteil + 15 % Servicegebühr**. Der Initiator erhält den
   vollen Anteil; die Gebühr behält die Plattform.
 - Der Sitzpreis hängt an den **angebotenen** Plätzen, nicht an der Auslastung:
-  Wer einem 4-Plätze-€120-Taxi beitritt, zahlt immer €36 — egal ob die Fahrt
+  Wer einem 4-Plätze-€120-Taxi beitritt, zahlt immer €34,50 — egal ob die Fahrt
   am Ende zu zweit oder zu viert stattfindet. Das Füllrisiko trägt der
   Initiator (jeder Mitfahrer reduziert seine Kosten strikt).
 
-**Beispiel:** Strecke €120, 4 Plätze → Sitzpreis €30, Mitfahrer zahlt €36.
-Bei 3 Mitfahrern: Plattform nimmt €108 ein, zahlt €90 an den Initiator aus,
-behält €18 (abzüglich Stripe-Kosten). Der Initiator zahlt dem Fahrer €120 und
-trägt netto €30 — seinen fairen Anteil.
+**Beispiel:** Strecke €120, 4 Plätze → Sitzpreis €30, Mitfahrer zahlt €34,50.
+Bei 3 Mitfahrern: Plattform nimmt €103,50 ein, zahlt €90 an den Initiator aus,
+behält €13,50 (abzüglich Stripe-Kosten). Der Initiator zahlt dem Fahrer €120
+und trägt netto €30 — seinen fairen Anteil.
 
 ## Regelwerk P1–P8
 
@@ -63,7 +63,7 @@ bezahlte Mitfahrer betroffen waren.
 | Checkout-Session / Seat-Reservierung | 35 min / 45 min (Session endet immer vor der Reservierung) |
 | Mindestvorlauf für Erstellen/Beitreten | 60 min |
 | Strikes bis Sperrung | 3 |
-| Servicegebühr | 20 % |
+| Servicegebühr | 15 % |
 | Zahlungsmethoden | Karte, Apple Pay, Google Pay — **kein SEPA** (8-Wochen-Rückbuchungsrecht kollidiert mit Einbehalt) |
 
 ## Warum dieses Zahlungsmodell
@@ -74,4 +74,6 @@ Stripe-Rückerstattung, die Auszahlung an den Initiator ein einfacher Transfer,
 und ein Initiator-Wechsel (P4) berührt Stripe gar nicht. Karten-Vorautorisierungen
 (v1) verfallen nach 7 Tagen und sind für Fahrten mit längerem Vorlauf unbrauchbar.
 Hinweis Rückerstattungen: Stripe erstattet die eigenen Prozessgebühren nicht
-(~1,5 % + €0,25) — dieser Verlust bei P1/P4/P5-Stornos ist in der 20%-Marge einkalkuliert.
+(~1,5 % + €0,25) — dieser Verlust bei P1/P4/P5-Stornos muss die 15%-Marge tragen.
+(Entscheidung 26.08.2026: Gebühr von 20 % auf 15 % gesenkt; bei zu hoher
+Storno-Quote ggf. neu bewerten.)

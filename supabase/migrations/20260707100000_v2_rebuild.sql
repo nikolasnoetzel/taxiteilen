@@ -6,7 +6,7 @@
 -- read-only access to what they may see.
 --
 -- Policy source of truth: docs/policies.md (P1–P8). Fee semantics:
--- supabase/functions/_shared/pricing.ts (platform fee 20%).
+-- supabase/functions/_shared/pricing.ts (platform fee, see PLATFORM_FEE_PERCENT).
 -- ============================================================================
 
 -- ---------------------------------------------------------------------------
