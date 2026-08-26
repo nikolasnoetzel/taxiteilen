@@ -60,8 +60,8 @@ const Auth = () => {
 
         toast.success("Konto erstellt! Bitte bestätige deine E-Mail.");
       }
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unbekannter Fehler");
     } finally {
       setLoading(false);
     }

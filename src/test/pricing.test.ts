@@ -63,6 +63,7 @@ describe("riderCharge", () => {
 
 describe("formatEuro", () => {
   it("formats German currency", () => {
-    expect(formatEuro(3600).replace(/[\s  ]/g, " ")).toBe("36,00 €");
+    // Intl nutzt schmale geschützte Leerzeichen — für den Vergleich normalisieren
+    expect(formatEuro(3600).replace(/[\s\u202F\u00A0]/g, " ")).toBe("36,00 €");
   });
 });

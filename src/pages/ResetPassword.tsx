@@ -49,8 +49,8 @@ const ResetPassword = () => {
       if (error) throw error;
       toast.success("Passwort erfolgreich geändert!");
       navigate("/");
-    } catch (error: any) {
-      toast.error(error.message);
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : "Unbekannter Fehler");
     } finally {
       setLoading(false);
     }
